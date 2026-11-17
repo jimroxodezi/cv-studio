@@ -1,0 +1,85 @@
+%==================================================================
+%  SHARED PREAMBLE  --  layout only, no content.
+%  Do not edit per job. Edit content/ or a body.tex instead.
+%==================================================================
+\documentclass[a4paper,10pt]{article}
+
+% \cvroot points at the repo root. Each main.tex sets it before
+% loading template/cv.tex; ../../ is the default for variants/* and jobs/*.
+\providecommand{\cvroot}{../../}
+
+\usepackage[margin=1.2cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{ragged2e}
+\usepackage[hidelinks]{hyperref}
+
+% Machine-readable text layer: helps ATS parsers and copy-paste.
+\ifdefined\pdfgentounicode
+  \input{glyphtounicode}
+  \pdfgentounicode=1
+\fi
+
+\urlstyle{same}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\setlength{\emergencystretch}{3em}
+\RaggedRight
+% No hyphenation: CV text should never break mid-word, and ATS parsers
+% extract "Telecom-mu-ni-ca-tions" as garbage keywords.
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+
+%---------------------------- sections ----------------------------
+\titleformat{\section}[block]{\large\bfseries}{}{0pt}{}%
+  [\vspace{0.08\baselineskip}\titlerule\vspace{0.08\baselineskip}]
+\titleformat{name=\section,numberless}[block]{\large\bfseries}{}{0pt}{}%
+  [\vspace{0.08\baselineskip}\titlerule\vspace{0.08\baselineskip}]
+\titlespacing*{\section}{0pt}{6pt}{3pt}
+\titlespacing*{name=\section,numberless}{0pt}{6pt}{3pt}
+
+%----------------------------- lists ------------------------------
+\setlist[itemize]{leftmargin=1.1em, labelsep=0.35em, noitemsep,
+                  topsep=1pt, parsep=0pt, partopsep=0pt}
+\newlist{subitems}{itemize}{1}
+\setlist[subitems]{label=$\circ$, leftmargin=1.3em, nosep,
+                   topsep=0pt, parsep=0pt, partopsep=0pt, itemsep=0pt}
+
+%============================ macros ==============================
+% Include a fragment from content/.  Usage: \content{experience/minas}
+\newcommand{\content}[1]{\input{\cvroot content/#1.tex}}
+
+% Section heading that absorbs its share of the leftover vertical space, so a
+% one-page CV always ends flush with the bottom margin. Use \cvsection instead
+% of \section* everywhere in body.tex.
+\newcommand{\cvsection}[1]{\vfill\section*{#1}}
+
+% One job entry.  Usage inside \begin{itemize}:
+%   \begin{cvjob}{Company}{Location}{Role title}{Dates} ... \end{cvjob}
+\newenvironment{cvjob}[4]{%
+  \item \textbf{#1} \hfill #2 \\
+        \textit{#3} \hfill #4%
+  \begin{subitems}%
+}{%
+  \end{subitems}%
+}
+
+% One project entry.  Usage inside \begin{itemize}:
+%   \begin{cvproject}{Name}{Stack, comma, separated} ... \end{cvproject}
+\newenvironment{cvproject}[2]{%
+  \item \textbf{#1} \quad {\small #2}%
+  \begin{subitems}%
+}{%
+  \end{subitems}%
+}
+
+% One skills line: \cvskill{Languages}{C++, C, Python}
+\newcommand{\cvskill}[2]{\textbf{#1:} #2\par\vspace{2pt}}
+
+% One education line: \cvedu{Degree}{Institution --- dates}
+\newcommand{\cvedu}[2]{\textbf{#1} \hfill #2\par\vspace{2pt}}

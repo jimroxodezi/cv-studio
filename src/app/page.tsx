@@ -8,17 +8,17 @@ const steps = [
   {
     n: "01",
     title: "Dump your career once",
-    body: "Paste a CV, upload a PDF or DOCX, or write rough notes. The app turns it into a structured career memory with named roles, projects, skills, and evidence.",
+    body: "Paste a CV, upload a PDF or DOCX, or write rough notes. The app turns it into a structured career memory with your own sections, entries, dates, credentials, and evidence.",
   },
   {
     n: "02",
     title: "Make as many variants as you need",
-    body: "AI, backend, telecom, research, general — each variant picks the entries and emphasis that fit that track, and builds a clean one-page LaTeX CV.",
+    body: "A hospital CV, a teaching CV, a research CV — each variant picks the sections and entries that fit that angle, and builds a clean, ATS-readable LaTeX CV that runs as long as its content honestly needs.",
   },
   {
     n: "03",
     title: "Tailor to a real job",
-    body: "Paste a posting or a link. The app maps requirements to your evidence, rewrites the bullets, flags gaps, and gives you the PDF plus the LaTeX source.",
+    body: "Paste a posting or a link. The app maps requirements to your evidence, rewrites the bullets, flags gaps, and writes a cover letter that argues from your record instead of restating it.",
   },
 ];
 
@@ -56,7 +56,7 @@ export default async function HomePage() {
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-stone-600">
               CV Studio keeps a single source of truth for your professional history, then
-              turns it into track-specific CVs and job-specific applications — typeset in
+              turns it into angle-specific CVs and job-specific applications — typeset in
               LaTeX, readable by applicant tracking systems, and honest about what your
               evidence actually supports.
             </p>

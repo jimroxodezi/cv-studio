@@ -15,6 +15,20 @@
       "when": 1794926508387,
       "tag": "0001_deepseek_key",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794928870753,
+      "tag": "0002_generic_sections",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794948863586,
+      "tag": "0003_profile_snapshots",
+      "breakpoints": true
     }
   ]
 }

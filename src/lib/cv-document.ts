@@ -1,46 +1,117 @@
-import type { ProfileData, SectionKey, TailorResult, VariantData } from "@/lib/profile";
-import type { CvDocument } from "@/lib/latex/render";
+import type {
+  ProfileData,
+  ProfileEntry,
+  ProfileGroup,
+  ProfileSection,
+  TailorResult,
+  VariantData,
+} from "@/lib/profile";
+import { sectionEntryIds } from "@/lib/profile";
+import type { CvDocument, CvSection } from "@/lib/latex/render";
 import type { VariantRow } from "@/lib/db/schema";
-
-function orderByIds<T extends { id: string }>(items: T[], ids: string[]): T[] {
-  const map = new Map(items.map((item) => [item.id, item]));
-  return ids.map((id) => map.get(id)).filter((item): item is T => Boolean(item));
-}
 
 export function variantToData(variant: VariantRow): VariantData {
   return {
     name: variant.name,
     track: variant.track,
     summary: variant.summary,
-    sectionOrder: variant.sectionOrder,
-    skillGroupIds: variant.skillGroupIds,
-    experienceIds: variant.experienceIds,
-    projectIds: variant.projectIds,
-    educationIds: variant.educationIds,
-    options: variant.options,
+    sectionIds: variant.sectionIds,
+    entryIds: variant.entryIds,
+    options: { pageTarget: variant.options?.pageTarget === 2 ? 2 : 1 },
   };
 }
 
-export function defaultSectionOrder(): SectionKey[] {
-  return ["summary", "skills", "experience", "projects", "education"];
+export function defaultSectionIds(profile: ProfileData): string[] {
+  return profile.sections.map((section) => section.id);
+}
+
+export function defaultEntryIds(profile: ProfileData): string[] {
+  return profile.sections.flatMap(sectionEntryIds);
+}
+
+function selectSection(
+  section: ProfileSection,
+  selectedEntryIds: Set<string>,
+): CvSection | null {
+  if (section.kind === "text") {
+    return section.text.trim()
+      ? { id: section.id, title: section.title, kind: "text", text: section.text }
+      : null;
+  }
+
+  if (section.kind === "groups") {
+    const groups = section.groups.filter((group) => selectedEntryIds.has(group.id));
+    return groups.length
+      ? { id: section.id, title: section.title, kind: "groups", groups }
+      : null;
+  }
+
+  const entries = section.entries.filter((entry) => selectedEntryIds.has(entry.id));
+  return entries.length
+    ? { id: section.id, title: section.title, kind: "entries", entries }
+    : null;
 }
 
 export function buildVariantDocument(profile: ProfileData, variant: VariantData): CvDocument {
-  const summary =
-    variant.summary.trim() ||
-    profile.summary.trim() ||
-    profile.positioning[variant.track] ||
-    "";
+  const selected = new Set(variant.entryIds);
+  const sections = variant.sectionIds
+    .map((id) => profile.sections.find((section) => section.id === id))
+    .filter((section): section is ProfileSection => Boolean(section))
+    .map((section) => selectSection(section, selected))
+    .filter((section): section is CvSection => Boolean(section));
 
   return {
     identity: profile.identity,
-    summary,
-    skills: orderByIds(profile.skillGroups, variant.skillGroupIds),
-    experience: orderByIds(profile.experience, variant.experienceIds),
-    projects: orderByIds(profile.projects, variant.projectIds),
-    education: orderByIds(profile.education, variant.educationIds),
-    sectionOrder: variant.sectionOrder.length ? variant.sectionOrder : defaultSectionOrder(),
+    headline: profile.headline,
+    summary:
+      variant.summary.trim() ||
+      profile.summary.trim() ||
+      profile.positioning[variant.track] ||
+      "",
+    sections,
   };
+}
+
+function tailoredEntries(result: TailorResult): Map<string, ProfileEntry> {
+  const map = new Map<string, ProfileEntry>();
+  for (const entry of result.document.entries) {
+    map.set(entry.entryId, {
+      id: entry.entryId,
+      heading: "",
+      subheading: "",
+      location: "",
+      start: "",
+      end: "",
+      current: false,
+      summary: "",
+      link: "",
+      bullets: entry.bullets.map((bullet, index) => ({
+        id: `${entry.entryId}-tailored-${index}`,
+        text: bullet.text,
+      })),
+      tags: [],
+    });
+  }
+  return map;
+}
+
+function tailoredGroups(result: TailorResult): Map<string, ProfileGroup[]> {
+  const map = new Map<string, ProfileGroup[]>();
+  for (const section of result.document.groups) {
+    map.set(
+      section.sectionId,
+      section.groups.map((group, index) => ({
+        id: `${section.sectionId}-tailored-${index}`,
+        label: group.label,
+        items: group.items,
+      })),
+    );
+  }
+  return map;
+}
+
+function tailoredTexts(result: TailorResult): Map<string, string> {
+  return new Map(result.document.texts.map((section) => [section.sectionId, section.text]));
 }
 
 export function buildTailoredDocument(
@@ -48,64 +119,60 @@ export function buildTailoredDocument(
   variant: VariantData,
   result: TailorResult,
 ): CvDocument {
-  const generatedExperience = new Map(result.document.experience.map((entry) => [entry.entryId, entry]));
-  const generatedProjects = new Map(result.document.projects.map((entry) => [entry.entryId, entry]));
+  const generated = tailoredEntries(result);
+  const generatedGroups = tailoredGroups(result);
+  const generatedTexts = tailoredTexts(result);
+  const selected = new Set(variant.entryIds);
 
-  const sourceExperience = orderByIds(profile.experience, variant.experienceIds);
-  const experience = sourceExperience
-    .map((entry) => {
-      const generated = generatedExperience.get(entry.id);
-      if (!generated) return null;
-      return {
-        ...entry,
-        bullets: generated.bullets.map((bullet, index) => ({
-          id: `${entry.id}-tailored-${index}`,
-          text: bullet.text,
-        })),
-      };
+  const sectionIds = result.document.sectionOrder.length
+    ? result.document.sectionOrder
+    : variant.sectionIds;
+
+  const sections = sectionIds
+    .map((id) => profile.sections.find((section) => section.id === id))
+    .filter((section): section is ProfileSection => Boolean(section))
+    .map((section): CvSection | null => {
+      if (section.kind === "text") {
+        const text = generatedTexts.get(section.id) ?? section.text;
+        return text.trim()
+          ? { id: section.id, title: section.title, kind: "text", text }
+          : null;
+      }
+
+      if (section.kind === "groups") {
+        const groups = generatedGroups.get(section.id) ?? section.groups.filter((group) => selected.has(group.id));
+        return groups.length
+          ? { id: section.id, title: section.title, kind: "groups", groups }
+          : null;
+      }
+
+      const source = section.entries.filter((entry) => selected.has(entry.id));
+      // If the model rewrote at least one entry here, respect its selection.
+      // If it rewrote none, keep the base entries rather than return a blank CV.
+      const rewritten = source.filter((entry) => generated.has(entry.id));
+      const chosen = rewritten.length ? rewritten : source;
+      const entries = chosen.map((entry) => {
+        const generatedEntry = generated.get(entry.id);
+        return generatedEntry?.bullets.length
+          ? { ...entry, bullets: generatedEntry.bullets }
+          : entry;
+      });
+      return entries.length
+        ? { id: section.id, title: section.title, kind: "entries", entries }
+        : null;
     })
-    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
-
-  const sourceProjects = orderByIds(profile.projects, variant.projectIds);
-  const projects = sourceProjects
-    .map((entry) => {
-      const generated = generatedProjects.get(entry.id);
-      if (!generated) return null;
-      return {
-        ...entry,
-        bullets: generated.bullets.map((bullet, index) => ({
-          id: `${entry.id}-tailored-${index}`,
-          text: bullet.text,
-        })),
-      };
-    })
-    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
-
-  const skills = result.document.skills.length
-    ? result.document.skills.map((group, index) => ({
-        id: `tailored-skill-${index}`,
-        label: group.label,
-        items: group.items,
-        tracks: [variant.track],
-      }))
-    : orderByIds(profile.skillGroups, variant.skillGroupIds);
-
-  const education = result.document.educationIds.length
-    ? orderByIds(profile.education, result.document.educationIds)
-    : orderByIds(profile.education, variant.educationIds);
-
-  const summary = result.document.summary.trim() || variant.summary || profile.summary;
+    .filter((section): section is CvSection => Boolean(section));
 
   return {
     identity: profile.identity,
-    summary,
-    skills,
-    experience,
-    projects,
-    education,
-    sectionOrder: result.document.sectionOrder.length
-      ? result.document.sectionOrder
-      : variant.sectionOrder,
+    headline: profile.headline,
+    summary:
+      result.document.summary.trim() ||
+      variant.summary ||
+      profile.summary ||
+      profile.positioning[variant.track] ||
+      "",
+    sections,
   };
 }
 

@@ -1,11 +1,38 @@
 import "server-only";
-import type { ProfileData, TailorResult, VariantData } from "@/lib/profile";
+import type { ProfileData, ProfileEntry, ProfileSection, TailorResult, VariantData } from "@/lib/profile";
 import { tailorResultSchema } from "@/lib/profile";
 import type { UserRow } from "@/lib/db/schema";
 import { completeJson, resolveProvider } from "@/lib/ai/provider";
 import { SYSTEM_PROMPT, tailorPrompt } from "@/lib/ai/prompts";
 import { assertGenerationQuota, recordUsage } from "@/lib/rate-limit";
 import { findClaimWarnings } from "@/lib/truthfulness";
+
+type SectionIndex = {
+  sections: Set<string>;
+  entries: Map<string, { section: ProfileSection; entry: ProfileEntry }>;
+  groupSections: Set<string>;
+  textSections: Set<string>;
+};
+
+function indexProfile(profile: ProfileData): SectionIndex {
+  const sections = new Set<string>();
+  const entries = new Map<string, { section: ProfileSection; entry: ProfileEntry }>();
+  const groupSections = new Set<string>();
+  const textSections = new Set<string>();
+
+  for (const section of profile.sections) {
+    sections.add(section.id);
+    if (section.kind === "entries") {
+      for (const entry of section.entries) entries.set(entry.id, { section, entry });
+    } else if (section.kind === "groups") {
+      groupSections.add(section.id);
+    } else {
+      textSections.add(section.id);
+    }
+  }
+
+  return { sections, entries, groupSections, textSections };
+}
 
 export async function tailorCv(options: {
   user: UserRow;
@@ -24,39 +51,61 @@ export async function tailorCv(options: {
     validate: (value) => tailorResultSchema.parse(value),
   });
 
-  const experienceIds = new Set(options.profile.experience.map((entry) => entry.id));
-  const projectIds = new Set(options.profile.projects.map((entry) => entry.id));
-  const educationIds = new Set(options.profile.education.map((entry) => entry.id));
+  const index = indexProfile(options.profile);
 
-  const unknownEntries = [
-    ...result.document.experience.filter((entry) => !experienceIds.has(entry.entryId)).map((entry) => entry.entryId),
-    ...result.document.projects.filter((entry) => !projectIds.has(entry.entryId)).map((entry) => entry.entryId),
-  ];
-  if (unknownEntries.length) {
-    result.document.experience = result.document.experience.filter((entry) =>
-      experienceIds.has(entry.entryId),
+  const unknownEntries = result.document.entries
+    .filter((entry) => !index.entries.has(entry.entryId))
+    .map((entry) => entry.entryId);
+  result.document.entries = result.document.entries.filter((entry) => index.entries.has(entry.entryId));
+
+  const unknownGroupSections = result.document.groups
+    .filter((section) => !index.groupSections.has(section.sectionId))
+    .map((section) => section.sectionId);
+  result.document.groups = result.document.groups.filter((section) =>
+    index.groupSections.has(section.sectionId),
+  );
+
+  const unknownTextSections = result.document.texts
+    .filter((section) => !index.textSections.has(section.sectionId))
+    .map((section) => section.sectionId);
+  result.document.texts = result.document.texts.filter((section) =>
+    index.textSections.has(section.sectionId),
+  );
+
+  result.document.sectionOrder = result.document.sectionOrder.filter((id) => index.sections.has(id));
+
+  const badRefs = [...unknownEntries, ...unknownGroupSections, ...unknownTextSections];
+  if (badRefs.length) {
+    result.gaps.push(
+      `The model referenced ids that are not in the memory: ${[...new Set(badRefs)].join(", ")}.`,
     );
-    result.document.projects = result.document.projects.filter((entry) =>
-      projectIds.has(entry.entryId),
-    );
-    result.gaps.push(`The model referenced entries that are not in the memory: ${unknownEntries.join(", ")}.`);
   }
-  result.document.educationIds = result.document.educationIds.filter((id) => educationIds.has(id));
 
-  if (!result.document.experience.length && options.profile.experience.length) {
-    // Never return a CV with no experience because the model was over-eager.
-    const selected = options.profile.experience.filter((entry) =>
-      options.variant.experienceIds.includes(entry.id),
+  if (!result.document.entries.length && !result.document.groups.length && !result.document.texts.length) {
+    // Never return a blank CV because the model was over-eager. Fall back to the
+    // entries the variant already selected, with their original bullets.
+    const selected = new Set(options.variant.entryIds);
+    const fallbackEntries = options.profile.sections.flatMap((section) =>
+      section.kind === "entries"
+        ? section.entries
+            .filter((entry) => selected.has(entry.id))
+            .slice(0, 4)
+            .map((entry) => ({
+              entryId: entry.id,
+              bullets: entry.bullets.slice(0, 5).map((bullet) => ({
+                text: bullet.text,
+                sourceBulletIds: [bullet.id],
+              })),
+            }))
+        : [],
     );
-    if (selected.length) {
-      result.document.experience = selected.slice(0, 4).map((entry) => ({
-        entryId: entry.id,
-        bullets: entry.bullets.slice(0, 5).map((bullet) => ({
-          text: bullet.text,
-          sourceBulletIds: [bullet.id],
-        })),
-      }));
-      result.gaps.push("The model returned no experience; the base bullets were kept as a fallback.");
+
+    if (fallbackEntries.length) {
+      result.document.entries = fallbackEntries;
+      if (!result.document.sectionOrder.length) {
+        result.document.sectionOrder = [...index.sections];
+      }
+      result.gaps.push("The model returned no entries; the base bullets were kept as a fallback.");
     }
   }
 

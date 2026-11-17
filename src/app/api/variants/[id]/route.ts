@@ -35,11 +35,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
         name: body.name,
         track: body.track,
         summary: body.summary,
-        sectionOrder: body.sectionOrder,
-        skillGroupIds: body.skillGroupIds,
-        experienceIds: body.experienceIds,
-        projectIds: body.projectIds,
-        educationIds: body.educationIds,
+        sectionIds: body.sectionIds,
+        entryIds: body.entryIds,
         options: body.options,
         updatedAt: new Date(),
       })

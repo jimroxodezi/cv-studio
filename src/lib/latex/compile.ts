@@ -69,13 +69,22 @@ function pdflatex(cwd: string) {
 }
 
 export async function compileCv(body: string): Promise<CompileResult> {
-  if (body.length > 80_000) throw new Error("That CV is too long to compile.");
+  return compileDocument(body, "preamble.tex");
+}
+
+/** Cover letters use their own layout but the same toolchain and checks. */
+export async function compileLetter(body: string): Promise<CompileResult> {
+  return compileDocument(body, "letter-preamble.tex");
+}
+
+async function compileDocument(body: string, preambleFile: string): Promise<CompileResult> {
+  if (body.length > 80_000) throw new Error("That document is too long to compile.");
   const latex = latexDocument(body);
 
   return withSlot(async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "cv-studio-"));
     try {
-      const preamble = await readFile(path.join(process.cwd(), "latex", "preamble.tex"), "utf8");
+      const preamble = await readFile(path.join(process.cwd(), "latex", preambleFile), "utf8");
       await writeFile(path.join(dir, "preamble.tex"), preamble, "utf8");
       await writeFile(path.join(dir, "main.tex"), latex, "utf8");
 
@@ -95,7 +104,7 @@ export async function compileCv(body: string): Promise<CompileResult> {
           .filter((line) => /^!|^\.\/main\.tex:\d+:|^l\.\d+/.test(line.trim()))
           .slice(0, 8)
           .join("\n");
-        throw new Error(`LaTeX could not compile this CV.${useful ? `\n${useful}` : ""}`);
+        throw new Error(`LaTeX could not compile this document.${useful ? `\n${useful}` : ""}`);
       }
 
       const pdf = await readFile(path.join(dir, "main.pdf"));
@@ -123,8 +132,12 @@ async function collectWarnings(dir: string): Promise<string[]> {
   const warnings: string[] = [];
   try {
     const log = await readFile(path.join(dir, "main.log"), "utf8");
-    const overfull = log.match(/Overfull \\hbox \(([\d.]+pt) too wide\)/g) ?? [];
-    for (const line of overfull.slice(0, 5)) warnings.push(line.replace("Overfull \\hbox ", "Overfull line: "));
+    // Sub-point overfulls are rounding noise from justification and are not
+    // visible on the page, so they are not worth warning a user about.
+    const overfull = [...log.matchAll(/Overfull \\hbox \(([\d.]+)pt too wide\)/g)]
+      .filter((match) => Number(match[1]) >= 1)
+      .slice(0, 5);
+    for (const match of overfull) warnings.push(`Overfull line: (${match[1]}pt too wide)`);
     if (log.includes("Missing character:")) warnings.push("Some characters could not be rendered by the font.");
   } catch {
     /* no log */

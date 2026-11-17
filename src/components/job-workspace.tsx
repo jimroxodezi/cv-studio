@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { JobAnalysis, TailorResult } from "@/lib/profile";
 import { Badge, Card, Field } from "@/components/ui";
+import { CoverLetterPanel, type LetterVersion } from "@/components/cover-letter-panel";
 
 type JobData = {
   id: string;
@@ -29,11 +30,13 @@ export function JobWorkspace({
   job,
   variants,
   versions,
+  letters,
   defaultVariantId,
 }: {
   job: JobData;
   variants: Array<{ id: string; name: string; track: string }>;
   versions: VersionData[];
+  letters: LetterVersion[];
   defaultVariantId?: string;
 }) {
   const router = useRouter();
@@ -143,11 +146,10 @@ export function JobWorkspace({
         analysis: data.analysis ?? current?.analysis ?? ({} as JobAnalysis),
         document: current?.document ?? {
           summary: "",
-          skills: [],
-          experience: [],
-          projects: [],
-          educationIds: [],
-          sectionOrder: ["summary", "skills", "experience", "projects", "education"],
+          sectionOrder: [],
+          entries: [],
+          groups: [],
+          texts: [],
         },
         keywordCoverage: data.keywordCoverage ?? [],
         gaps: data.gaps ?? [],
@@ -268,6 +270,12 @@ export function JobWorkspace({
             <p className="mt-3 text-sm text-stone-500">No analysis yet. Tailor the CV to extract requirements and gaps.</p>
           )}
         </Card>
+
+        <CoverLetterPanel
+          jobId={job.id}
+          hasDescription={description.trim().length >= 40}
+          versions={letters}
+        />
 
         {coverage.length ? (
           <Card className="p-5">

@@ -29,7 +29,8 @@ export async function POST(request: NextRequest) {
     }
 
     dump = dump.trim();
-    if (dump.length < 80) return error("Add a little more to the dump — at least a few lines.", 400);
+    if (!dump) return error("Paste a few lines about your work, or upload a CV file.", 400);
+    if (dump.length < 3) return error("Add at least a role or a few words about your work.", 400);
     if (dump.length > 100_000) return error("That dump is too long. Trim it to under 100,000 characters.", 400);
 
     const result = await extractCareerDump({ user, dump });
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
       profile: result.profile,
       suggestedTracks: result.suggestedTracks,
       gaps: result.gaps,
+      suggestions: result.suggestions,
       model: result.model,
     });
   } catch (err) {

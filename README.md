@@ -134,6 +134,38 @@ the browser.
 5. You review the PDF, the coverage, and the gaps, and download the PDF or the
    `.tex` source.
 
+## How cover letters work
+
+1. The same posting and career memory feed a separate writing brief. If the CV has
+   already been tailored, its analysis, positioning, and gaps are passed in so the
+   letter cannot contradict it.
+2. The brief is opinionated on purpose: the letter opens on a concrete artefact or
+   constraint rather than announcing itself, develops one centrepiece of evidence,
+   and closes on a specific first move. Template language is banned by name.
+3. The draft is checked against a fixed list of phrase-level tells
+   (`SLOP_PHRASES`, `SLOP_OPENERS`). If it trips them, one repair pass rewrites it
+   from scratch; the cleaner of the two drafts is kept.
+4. Number claims are checked like the CV, including spelled-out scope such as
+   "three programs" — the most common way a letter borrows the employer's numbers
+   as the candidate's own.
+5. The letter is stored as structured text plus a compiled PDF, so it can be edited
+   line by line and rebuilt without another model call. Recent letters on the same
+   application are used to steer the next draft onto a different structure.
+
+Letters use `latex/letter-preamble.tex`, not the CV preamble. It deliberately keeps
+`\documentclass` at 10pt: the production image ships Latin Modern only, and an
+11pt base makes the class demand Computer Modern metrics that are not there.
+
+## Editing and clearing the memory
+
+The profile page edits the memory in place: add or remove sections, rows, bullets,
+labelled lists, and guardrails, then save. `POST /api/profile/clear` wipes it back to
+an empty profile — same account, same name — and clears the saved source text. It
+requires `{"confirm": "CLEAR"}`, and it re-points every variant at the empty sections
+so nothing references ids that no longer exist. The UI sends you straight to the
+import screen afterwards, which is the intended path: clear, then paste or upload a
+fresh dump.
+
 ## Data model
 
 - `users` — account, role, encrypted provider keys
@@ -141,7 +173,9 @@ the browser.
 - `profiles` — one career-memory JSON document per user
 - `variants` — selected entry IDs, summary, section order, page target
 - `jobs` — posting, analysis, result, notes, status
-- `documents` — versioned LaTeX source, PDF bytes, page count, ATS text, warnings
+- `documents` — versioned LaTeX source, PDF bytes, page count, ATS text, warnings.
+  `kind` is `variant`, `tailored`, or `cover_letter`; letters keep their editable
+  text in `meta.letter`.
 - `usage_events` — daily limits for the shared server key
 
 ## Security notes
@@ -161,8 +195,11 @@ the browser.
 
 - The shared server key has a per-user daily cap; it is not a billing system.
 - URL fetching cannot get past login walls or aggressive bot protection.
-- The truthfulness check catches **numbers and dates**, not every possible
-  unsupported claim. Read the warnings and the draft.
+- The truthfulness check catches **numbers** (digits and spelled-out scope) and the
+  `doNotClaim` list, not every possible unsupported claim. A letter can still assert
+  experience in non-numeric form. Read the warnings and the draft.
+- The letter writer never blocks on a warning; it reports. A warning is a prompt to
+  edit, not a failure.
 - One page is the default; research CVs can target two. The app reports the
   page count but does not automatically tighten content to fit.
 - No password reset, because there are no passwords. Revoke access by deleting

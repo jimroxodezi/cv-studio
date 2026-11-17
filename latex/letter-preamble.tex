@@ -1,0 +1,72 @@
+%==================================================================
+%  COVER LETTER PREAMBLE  --  layout only, no content.
+%  Loaded by src/lib/latex/compile.ts for documents of kind
+%  "cover_letter". Keep in sync with preamble.tex where they share
+%  a convention (no hyphenation, ragged right, empty page style).
+%==================================================================
+% The base size stays 10pt on purpose. With 11pt the class loads size11.clo,
+% which asks for Computer Modern metrics at 10.95pt; the production image ships
+% Latin Modern only, so that lookup fails before any text is set. The body size
+% is raised after lmodern is loaded instead, which is why the line below exists.
+\documentclass[a4paper,10pt]{article}
+
+\usepackage[margin=2.2cm,top=2.0cm,bottom=2.0cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+
+% Body text reads better one step above the CV. Latin Modern is scalable and
+% already selected, so this costs nothing at compile time.
+\makeatletter
+\renewcommand{\normalsize}{\@setfontsize\normalsize{11}{13.6}}
+\makeatother
+
+\usepackage{microtype}
+\usepackage{ragged2e}
+\usepackage[hidelinks]{hyperref}
+
+% Machine-readable text layer: ATS parsers and copy-paste.
+\ifdefined\pdfgentounicode
+  \input{glyphtounicode}
+  \pdfgentounicode=1
+\fi
+
+\urlstyle{same}
+\pagestyle{empty}
+\raggedbottom
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{7pt}
+\setlength{\emergencystretch}{3em}
+\RaggedRight
+% No hyphenation, same as the CV: "colla-bora-tion" extracts as garbage.
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+
+%---------------------------- macros ------------------------------
+% Sender block: name, contact line, optional links line, then a hairline rule.
+\newcommand{\letterhead}[3]{%
+  {\LARGE\bfseries #1}\par\vspace{2pt}%
+  {\small #2}\par
+  \if\relax\detokenize{#3}\relax\else{\small #3}\par\fi
+  \vspace{7pt}\noindent\rule{\linewidth}{0.5pt}\par
+}
+
+% Date, right aligned under the rule.
+\newcommand{\letterdate}[1]{\vspace{2pt}\hfill{\small #1}\par\vspace{2pt}}
+
+% Recipient block. The second argument is optional (role or team line).
+\newcommand{\letterto}[2]{%
+  \textbf{#1}\par
+  \if\relax\detokenize{#2}\relax\else{\small #2}\par\fi
+}
+
+% Subject line: bold, no "Re:" theatre.
+\newcommand{\lettersubject}[1]{\vspace{2pt}\textbf{#1}\par\vspace{2pt}}
+
+% Salutation, kept on the same baseline flow as the body.
+\newcommand{\letteropening}[1]{#1\par}
+
+% Sign-off: the closing word, a signature gap, then the printed name.
+\newcommand{\letterclosing}[2]{%
+  \vspace{4pt}#1\par\vspace{16pt}\textbf{#2}\par
+}

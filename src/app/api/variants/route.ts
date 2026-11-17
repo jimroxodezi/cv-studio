@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { variants } from "@/lib/db/schema";
 import { ensureProfile } from "@/lib/guards";
-import { defaultSectionOrder } from "@/lib/cv-document";
+import { defaultEntryIds, defaultSectionIds } from "@/lib/cv-document";
 
 export const dynamic = "force-dynamic";
 
@@ -43,13 +43,10 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         name: body.name,
         track: body.track,
-        summary: body.summary ?? profile.positioning[body.track] ?? "",
-        sectionOrder: defaultSectionOrder(),
-        skillGroupIds: profile.skillGroups.map((group) => group.id),
-        experienceIds: profile.experience.map((entry) => entry.id),
-        projectIds: profile.projects.map((entry) => entry.id),
-        educationIds: profile.education.map((entry) => entry.id),
-        options: { pageTarget: 1, showSummary: true, showSkills: true },
+        summary: body.summary ?? profile.positioning[body.track] ?? profile.summary ?? "",
+        sectionIds: defaultSectionIds(profile),
+        entryIds: defaultEntryIds(profile),
+        options: { pageTarget: 1 },
       })
       .returning();
 

@@ -1,6 +1,6 @@
 import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
-import type { ZodType } from "zod";
+import { ZodError, type ZodType } from "zod";
 import { env } from "@/lib/env";
 
 export function json(data: unknown, status = 200): NextResponse {
@@ -27,6 +27,16 @@ export function handleError(err: unknown): NextResponse {
   if (message === "UNAUTHORIZED") return error("Sign in to continue.", 401);
   if (message === "FORBIDDEN") return error("You do not have access to this.", 403);
   if (message === "NOT_FOUND") return error("That item could not be found.", 404);
+  if (err instanceof ZodError) {
+    // Model output that still fails the profile schema after the repair
+    // attempt. The raw issues are for the server log, not the browser.
+    console.error("Validation failed:", err.issues);
+    const field = err.issues[0]?.path.join(".") || "the result";
+    return error(
+      `The model returned an incomplete result (${field}). Try again, or import again as plain text and add the missing part by hand.`,
+      502,
+    );
+  }
   console.error(err);
   return error(message, 500);
 }

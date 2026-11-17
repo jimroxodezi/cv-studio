@@ -26,6 +26,10 @@
 
 \urlstyle{same}
 \pagestyle{empty}
+% Let the last page end where the content ends. With \flushbottom, TeX
+% stretches every bit of vertical glue to fill the page, which is what turns
+% a nearly-full CV into one with huge, uneven gaps between sections.
+\raggedbottom
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{0pt}
 \setlength{\emergencystretch}{3em}
@@ -54,10 +58,14 @@
 % Include a fragment from content/.  Usage: \content{experience/minas}
 \newcommand{\content}[1]{\input{\cvroot content/#1.tex}}
 
-% Section heading that absorbs its share of the leftover vertical space, so a
-% one-page CV always ends flush with the bottom margin. Use \cvsection instead
-% of \section* everywhere in body.tex.
-\newcommand{\cvsection}[1]{\vfill\section*{#1}}
+% Section heading with fixed, honest spacing. Content flows top to bottom and
+% spills onto a second page when it needs to; sections are never pushed apart to
+% fill leftover space. Use \cvsection instead of \section* everywhere in body.tex.
+%
+% A negative penalty makes the space before the heading a preferred breakpoint, so a
+% heading that would land alone at the foot of a page moves to the next one. It adds
+% no glue, so it cannot create a gap.
+\newcommand{\cvsection}[1]{\par\penalty-100 \section*{#1}\nopagebreak[3]}
 
 % One job entry.  Usage inside \begin{itemize}:
 %   \begin{cvjob}{Company}{Location}{Role title}{Dates} ... \end{cvjob}
@@ -67,6 +75,16 @@
   \begin{subitems}%
 }{%
   \end{subitems}%
+}
+
+% One generic entry for any section (job, degree, award, publication...).
+% Usage inside \begin{itemize}:
+%   \cventry{Heading}{Subheading}{Location}{Dates}
+% Follow it with a nested \begin{subitems} ... \end{subitems} only when there
+% are bullets; an empty nested list is a LaTeX error.
+\newcommand{\cventry}[4]{%
+  \item \textbf{#1} \hfill #4%
+  \if\relax\detokenize{#2#3}\relax\else\\ \textit{#2} \hfill #3\fi
 }
 
 % One project entry.  Usage inside \begin{itemize}:

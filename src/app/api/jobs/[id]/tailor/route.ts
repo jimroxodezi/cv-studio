@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { documents, jobs, variants } from "@/lib/db/schema";
 import { ensureProfile, getOwnedJob, getOwnedVariant } from "@/lib/guards";
-import { buildTailoredDocument, defaultSectionOrder, variantToData } from "@/lib/cv-document";
+import { buildTailoredDocument, defaultEntryIds, defaultSectionIds, variantToData } from "@/lib/cv-document";
 import { renderBody } from "@/lib/latex/render";
 import { compileCv } from "@/lib/latex/compile";
 import { atsWarnings } from "@/lib/truthfulness";
@@ -31,8 +31,8 @@ export async function POST(request: NextRequest, { params }: Params) {
     const body = await readJson(request, schema);
     const profile = await ensureProfile(user);
 
-    if (!profile.experience.length) {
-      return error("Add at least one role to your career memory before tailoring.", 400);
+    if (!profile.sections.some((section) => section.entries.length || section.groups.length || section.text.trim())) {
+      return error("Add at least one section to your career memory before tailoring.", 400);
     }
     if (job.description.trim().length < 40) {
       return error("Add the job description first.", 400);
@@ -57,12 +57,9 @@ export async function POST(request: NextRequest, { params }: Params) {
           name: "General",
           track: "general",
           summary: profile.summary || profile.positioning.general || "",
-          sectionOrder: defaultSectionOrder(),
-          skillGroupIds: profile.skillGroups.map((group) => group.id),
-          experienceIds: profile.experience.map((entry) => entry.id),
-          projectIds: profile.projects.map((entry) => entry.id),
-          educationIds: profile.education.map((entry) => entry.id),
-          options: { pageTarget: 1, showSummary: true, showSkills: true },
+          sectionIds: defaultSectionIds(profile),
+          entryIds: defaultEntryIds(profile),
+          options: { pageTarget: 1 },
         })
         .returning();
       variant = created[0];

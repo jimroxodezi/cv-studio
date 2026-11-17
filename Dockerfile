@@ -157,6 +157,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/scripts/migrate.mjs ./scripts/migrate.mjs
 COPY --from=builder /app/latex/preamble.tex ./latex/preamble.tex
+COPY --from=builder /app/latex/letter-preamble.tex ./latex/letter-preamble.tex
 COPY --from=builder /app/package.json ./package.json
 
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

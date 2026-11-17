@@ -2,8 +2,76 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ImportResult } from "@/lib/profile";
+import type { ImportResult, ProfileSection, ProfileSuggestion } from "@/lib/profile";
 import { Badge, Card } from "@/components/ui";
+
+function selectionIds(profile: ImportResult["profile"]): string[] {
+  return profile.sections.flatMap((section) =>
+    section.kind === "entries"
+      ? section.entries.map((entry) => entry.id)
+      : section.kind === "groups"
+        ? section.groups.map((group) => group.id)
+        : [],
+  );
+}
+
+function SectionSummary({ section }: { section: ProfileSection }) {
+  const count =
+    section.kind === "entries" ? section.entries.length : section.kind === "groups" ? section.groups.length : 0;
+  return (
+    <div className="rounded-xl bg-stone-50 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-stone-900">{section.title}</p>
+        <Badge>{section.kind === "text" ? "prose" : `${count} ${section.kind === "entries" ? "rows" : "lists"}`}</Badge>
+      </div>
+      {section.kind === "entries"
+        ? section.entries.slice(0, 4).map((entry) => (
+            <p key={entry.id} className="mt-1 text-xs text-stone-500">
+              {entry.heading}
+              {entry.subheading ? ` · ${entry.subheading}` : ""}
+              {entry.start || entry.end ? ` · ${entry.start}${entry.end ? ` – ${entry.end}` : ""}` : ""}
+            </p>
+          ))
+        : null}
+      {section.kind === "groups"
+        ? section.groups.slice(0, 4).map((group) => (
+            <p key={group.id} className="mt-1 text-xs text-stone-500">
+              {group.label}: {group.items.slice(0, 5).join(", ")}
+            </p>
+          ))
+        : null}
+      {section.kind === "text" && section.text ? (
+        <p className="mt-1 line-clamp-2 text-xs text-stone-500">{section.text}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function SuggestionList({ suggestions }: { suggestions: ProfileSuggestion[] }) {
+  const tones: Record<ProfileSuggestion["priority"], "amber" | "neutral"> = {
+    high: "amber",
+    medium: "neutral",
+    low: "neutral",
+  };
+  const labels: Record<ProfileSuggestion["priority"], string> = {
+    high: "Important",
+    medium: "Useful",
+    low: "Optional",
+  };
+
+  return (
+    <ul className="mt-2 space-y-2">
+      {suggestions.map((suggestion) => (
+        <li key={`${suggestion.area}-${suggestion.text}`} className="flex items-start gap-2 text-sm">
+          <Badge tone={tones[suggestion.priority]}>{labels[suggestion.priority]}</Badge>
+          <span className="text-stone-700">
+            <span className="font-semibold text-stone-900">{suggestion.area}:</span> {suggestion.text}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function ImportDump() {
   const router = useRouter();
@@ -44,12 +112,16 @@ export function ImportDump() {
       const save = await fetch("/api/profile", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ data: result.profile, rawDump: text }),
+        // Tags this as a replacement so the previous memory is snapshotted first.
+        body: JSON.stringify({ data: result.profile, rawDump: text, reason: "import" }),
       });
       const saved = (await save.json()) as { error?: string };
       if (!save.ok) throw new Error(saved.error || "Could not save the memory.");
 
-      // Keep existing variants usable: point their selections at the new entries.
+      const sectionIds = result.profile.sections.map((section) => section.id);
+      const entryIds = selectionIds(result.profile);
+
+      // Keep existing variants usable: point their selections at the new sections.
       const existingResponse = await fetch("/api/variants");
       if (existingResponse.ok) {
         const existing = (await existingResponse.json()) as {
@@ -58,8 +130,7 @@ export function ImportDump() {
             name: string;
             track: string;
             summary: string;
-            sectionOrder: string[];
-            options: { pageTarget: 1 | 2; showSummary: boolean; showSkills: boolean };
+            options: { pageTarget: 1 | 2 };
           }>;
         };
         for (const variant of existing.variants ?? []) {
@@ -70,12 +141,9 @@ export function ImportDump() {
               name: variant.name,
               track: variant.track,
               summary: variant.summary,
-              sectionOrder: variant.sectionOrder,
-              skillGroupIds: result.profile.skillGroups.map((group) => group.id),
-              experienceIds: result.profile.experience.map((entry) => entry.id),
-              projectIds: result.profile.projects.map((entry) => entry.id),
-              educationIds: result.profile.education.map((entry) => entry.id),
-              options: variant.options,
+              sectionIds,
+              entryIds,
+              options: { pageTarget: variant.options?.pageTarget === 2 ? 2 : 1 },
             }),
           });
         }
@@ -98,39 +166,80 @@ export function ImportDump() {
 
   if (result) {
     const profile = result.profile;
+    const entryCount = profile.sections.reduce(
+      (total, section) => total + (section.kind === "entries" ? section.entries.length : 0),
+      0,
+    );
+    const listCount = profile.sections.reduce(
+      (total, section) => total + (section.kind === "groups" ? section.groups.length : 0),
+      0,
+    );
+    const hasContent = profile.sections.some((section) =>
+      section.kind === "entries"
+        ? section.entries.length > 0
+        : section.kind === "groups"
+          ? section.groups.some((group) => group.items.length > 0)
+          : section.text.trim().length > 0,
+    );
+
     return (
       <div className="space-y-5">
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          Extracted a memory with {profile.experience.length} roles, {profile.projects.length} projects,{" "}
-          {profile.skillGroups.length} skill groups, and {profile.education.length} education lines.
+        <div
+          className={`rounded-xl border p-4 text-sm ${
+            hasContent
+              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+              : "border-amber-200 bg-amber-50 text-amber-900"
+          }`}
+        >
+          {hasContent ? (
+            <>
+              Extracted {profile.sections.length} sections, {entryCount} rows, and {listCount} labelled lists. Check
+              the section titles before saving — rename them to match your field. Anything the dump did not say is
+              left blank and listed below, never filled in.
+            </>
+          ) : (
+            <>
+              This dump is thin. The CV will be built from what is here and nothing more — expect a short CV plus a
+              list of what to add. Nothing has been invented.
+            </>
+          )}
         </div>
 
         <Card className="p-6">
           <h2 className="font-serif text-xl font-bold">{profile.identity.fullName || "Your memory"}</h2>
           <p className="mt-1 text-sm text-stone-600">{profile.headline}</p>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {profile.experience.map((entry) => (
-              <div key={entry.id} className="rounded-xl bg-stone-50 p-3">
-                <p className="text-sm font-semibold text-stone-900">{entry.role || "(no role)"}</p>
-                <p className="text-xs text-stone-500">
-                  {entry.company || "(no company)"} · {entry.start} – {entry.current ? "Present" : entry.end}
-                </p>
-                <p className="mt-1 text-xs text-stone-500">{entry.bullets.length} bullets</p>
-              </div>
-            ))}
+          <div className="mt-1 text-xs text-stone-500">
+            {profile.identity.email}
+            {profile.identity.location ? ` · ${profile.identity.location}` : ""}
           </div>
-          {profile.skillGroups.length ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {profile.skillGroups.map((group) => (
-                <Badge key={group.id}>{group.label}: {group.items.slice(0, 4).join(", ")}</Badge>
+          {profile.sections.length ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {profile.sections.map((section) => (
+                <SectionSummary key={section.id} section={section} />
               ))}
             </div>
-          ) : null}
+          ) : (
+            <p className="mt-4 text-sm text-stone-500">
+              No sections were extracted. You can still save the memory, but the CV will only have your name and
+              contact details until you add history.
+            </p>
+          )}
         </Card>
+
+        {result.suggestions.length ? (
+          <Card className="border-sky-200 bg-sky-50/50 p-5">
+            <h3 className="font-serif text-lg font-bold text-sky-950">Make this CV stronger</h3>
+            <p className="mt-1 text-sm text-sky-900/80">
+              The fastest way to improve the result is to add these facts. Each one is information only you can
+              supply.
+            </p>
+            <SuggestionList suggestions={result.suggestions} />
+          </Card>
+        ) : null}
 
         {result.gaps.length ? (
           <Card className="border-amber-200 bg-amber-50/60 p-5">
-            <h3 className="font-serif text-lg font-bold text-amber-900">Worth checking</h3>
+            <h3 className="font-serif text-lg font-bold text-amber-900">What the dump did not say</h3>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-900">
               {result.gaps.map((gap) => (
                 <li key={gap}>{gap}</li>
@@ -141,7 +250,9 @@ export function ImportDump() {
 
         <Card className="p-6">
           <h3 className="font-serif text-lg font-bold">Create starting variants</h3>
-          <p className="hint mb-3">Each one selects the entries that fit that track. You can edit them after.</p>
+          <p className="hint mb-3">
+            Each one starts with all of your sections. You can hide sections and entries after.
+          </p>
           <div className="flex flex-wrap gap-2">
             {result.suggestedTracks.length ? (
               result.suggestedTracks.map((track) => {
@@ -167,7 +278,7 @@ export function ImportDump() {
                 );
               })
             ) : (
-              <p className="hint">No track suggestions. You can create variants by hand.</p>
+              <p className="hint">No suggestions. You can create variants by hand.</p>
             )}
           </div>
         </Card>
@@ -182,7 +293,10 @@ export function ImportDump() {
             Back
           </button>
         </div>
-        <p className="hint">This replaces the current career memory. Existing variants are re-pointed at the new entries; their bullet content stays yours.</p>
+        <p className="hint">
+          This replaces the current career memory. Existing variants are re-pointed at the new sections; their bullet
+          content stays yours.
+        </p>
       </div>
     );
   }
@@ -194,7 +308,7 @@ export function ImportDump() {
           <span className="label">Paste your professional dump</span>
           <textarea
             className="input min-h-64 font-mono text-xs leading-relaxed"
-            placeholder="Paste an old CV, LinkedIn export, or rough notes. Include dates, employers, projects, numbers, and anything you are unsure about — the extractor will tell you what is missing."
+            placeholder="Paste an old CV, LinkedIn export, or rough notes. Include dates, employers, qualifications, numbers, and anything you are unsure about — the extractor will tell you what is missing."
             value={text}
             onChange={(e) => setText(e.target.value)}
             disabled={Boolean(file)}

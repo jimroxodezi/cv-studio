@@ -11,12 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import type {
-  JobAnalysis,
-  ProfileData,
-  SectionKey,
-  TailorResult,
-} from "../profile";
+import type { JobAnalysis, ProfileData, TailorResult } from "../profile";
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({
   dataType() {
@@ -98,18 +93,34 @@ export const variants = pgTable(
     name: text("name").notNull(),
     track: text("track").notNull().default("general"),
     summary: text("summary").notNull().default(""),
-    sectionOrder: jsonb("section_order").$type<SectionKey[]>().notNull(),
-    skillGroupIds: jsonb("skill_group_ids").$type<string[]>().notNull(),
-    experienceIds: jsonb("experience_ids").$type<string[]>().notNull(),
-    projectIds: jsonb("project_ids").$type<string[]>().notNull(),
-    educationIds: jsonb("education_ids").$type<string[]>().notNull(),
-    options: jsonb("options")
-      .$type<{ pageTarget: 1 | 2; showSummary: boolean; showSkills: boolean }>()
-      .notNull(),
+    sectionIds: jsonb("section_ids").$type<string[]>().notNull(),
+    entryIds: jsonb("entry_ids").$type<string[]>().notNull(),
+    options: jsonb("options").$type<{ pageTarget: 1 | 2 }>().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [index("variants_user_idx").on(table.userId)],
+);
+
+/**
+ * A saved copy of the career memory. Automatic snapshots guard destructive
+ * actions (clear, import, restore); manual ones are kept until deleted.
+ */
+export const profileSnapshots = pgTable(
+  "profile_snapshots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    data: jsonb("data").$type<ProfileData>().notNull(),
+    rawDump: text("raw_dump").notNull().default(""),
+    label: text("label").notNull().default(""),
+    /** manual | clear | import | restore */
+    reason: text("reason").notNull().default("manual"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("profile_snapshots_user_idx").on(table.userId, table.createdAt)],
 );
 
 export const jobs = pgTable(
@@ -179,3 +190,4 @@ export type ProfileRow = typeof profiles.$inferSelect;
 export type VariantRow = typeof variants.$inferSelect;
 export type JobRow = typeof jobs.$inferSelect;
 export type DocumentRow = typeof documents.$inferSelect;
+export type ProfileSnapshotRow = typeof profileSnapshots.$inferSelect;

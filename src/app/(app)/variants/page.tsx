@@ -27,11 +27,11 @@ export default async function VariantsPage() {
         description="Each variant is a saved selection of your career memory, with its own summary and section order. Build one, check the PDF, then tailor it to a job."
       />
 
-      {!profile.experience.length ? (
+      {!profile.sections.some((section) => section.entries.length || section.groups.length || section.text.trim()) ? (
         <div className="mb-6">
           <EmptyState
-            title="Your memory needs a role first"
-            body="Variants select from the roles, projects, and skills in your career memory. Add or import at least one role, then come back."
+            title="Your memory needs a section first"
+            body="Variants select from the sections and entries in your career memory. Add or import at least one section, then come back."
             action={
               <Link href="/profile" className="btn-primary">
                 Open career memory
@@ -53,11 +53,10 @@ export default async function VariantsPage() {
                       <Badge tone="amber">{variant.track}</Badge>
                     </div>
                     <p className="mt-1 line-clamp-2 max-w-2xl text-sm text-stone-600">
-                      {variant.summary || "No summary override — uses the track positioning from your memory."}
+                      {variant.summary || "No summary override — uses the matching career angle or your default summary."}
                     </p>
                     <p className="mt-2 text-xs text-stone-500">
-                      {variant.experienceIds.length} roles · {variant.projectIds.length} projects ·{" "}
-                      {variant.skillGroupIds.length} skill groups · updated{" "}
+                      {variant.sectionIds.length} sections · {variant.entryIds.length} entries · updated{" "}
                       {variant.updatedAt.toLocaleDateString()}
                     </p>
                   </div>
@@ -69,12 +68,14 @@ export default async function VariantsPage() {
             ))
           ) : (
             <Card className="p-6 text-sm text-stone-500">
-              No variants yet. Create one on the right, or import a dump and let the studio suggest tracks.
+              No variants yet. Create one on the right, or import a dump and let the studio suggest angles.
             </Card>
           )}
         </div>
         <div>
-          <NewVariantForm disabled={!profile.experience.length} />
+          <NewVariantForm
+            disabled={!profile.sections.some((section) => section.entries.length || section.groups.length || section.text.trim())}
+          />
         </div>
       </div>
     </div>

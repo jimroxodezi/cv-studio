@@ -4,7 +4,9 @@ import { getSessionUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { jobs, variants } from "@/lib/db/schema";
 import { getProfileRow } from "@/lib/guards";
-import { profileCompleteness } from "@/lib/profile";
+import { profileHasContent, profileCompleteness, countEntries } from "@/lib/profile";
+import { profileSuggestions } from "@/lib/cv-suggestions";
+import { ProfileSuggestions } from "@/components/profile-suggestions";
 import { Badge, Card, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +26,8 @@ export default async function DashboardPage() {
 
   const completeness = profile ? profileCompleteness(profile) : 0;
   const firstName = (profile?.identity.fullName || user.name || user.email).split(" ")[0];
-  const hasMemory = Boolean(profile?.experience.length);
+  const hasMemory = Boolean(profile && profileHasContent(profile));
+  const suggestions = profile ? profileSuggestions(profile) : [];
 
   return (
     <div>
@@ -54,8 +57,8 @@ export default async function DashboardPage() {
               </h2>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-stone-600">
                 Paste an old CV, a set of rough notes, or upload a PDF/DOCX. You will get a
-                structured career memory back — roles, projects, skills, and the evidence
-                behind each claim. You review and edit everything before it is used.
+                structured career memory back — jobs, qualifications, credentials, skills,
+                and the evidence behind each claim. You review and edit everything before it is used.
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
                 <Link href="/profile/import" className="btn-primary">
@@ -81,7 +84,7 @@ export default async function DashboardPage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Memory</p>
             <p className="mt-2 font-serif text-3xl font-bold">{completeness}%</p>
             <p className="mt-1 text-xs text-stone-500">
-              {profile?.experience.length} roles · {profile?.projects.length} projects
+              {profile?.sections.length ?? 0} sections · {profile ? countEntries(profile) : 0} entries
             </p>
           </Card>
           <Card className="p-5">
@@ -109,6 +112,12 @@ export default async function DashboardPage() {
         </div>
       )}
 
+      {hasMemory && suggestions.length ? (
+        <div className="mb-6">
+          <ProfileSuggestions suggestions={suggestions} compact />
+        </div>
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-6">
           <div className="mb-4 flex items-center justify-between">
@@ -125,7 +134,7 @@ export default async function DashboardPage() {
                     <div>
                       <p className="text-sm font-semibold text-stone-900">{variant.name}</p>
                       <p className="text-xs text-stone-500">
-                        {variant.track} · {variant.experienceIds.length} roles
+                        {variant.track} · {variant.entryIds.length} entries
                       </p>
                     </div>
                     <span className="text-stone-300">→</span>

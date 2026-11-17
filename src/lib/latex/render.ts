@@ -1,13 +1,16 @@
-import type { Education, Experience, Identity, Project, SectionKey, SkillGroup } from "@/lib/profile";
+import type { Identity, ProfileEntry, ProfileGroup } from "@/lib/profile";
+
+export type CvSection =
+  | { id: string; title: string; kind: "entries"; entries: ProfileEntry[] }
+  | { id: string; title: string; kind: "groups"; groups: ProfileGroup[] }
+  | { id: string; title: string; kind: "text"; text: string };
 
 export type CvDocument = {
   identity: Identity;
   summary: string;
-  skills: SkillGroup[];
-  experience: Experience[];
-  projects: Project[];
-  education: Education[];
-  sectionOrder: SectionKey[];
+  /** Printed under the name only when there is no summary to lead with. */
+  headline?: string;
+  sections: CvSection[];
 };
 
 const ESCAPES: Record<string, string> = {
@@ -52,7 +55,7 @@ function dateRange(start: string, end: string, current: boolean): string {
   return [start, final].filter(Boolean).join(" -- ");
 }
 
-function header(identity: Identity): string {
+function header(identity: Identity, headline: string): string {
   const contact: string[] = [];
   if (identity.email) contact.push(link(`mailto:${identity.email}`, identity.email));
   if (identity.phone) contact.push(escapeLatex(identity.phone));
@@ -67,6 +70,7 @@ function header(identity: Identity): string {
     "\\begin{center}",
     `  {\\LARGE \\textbf{${escapeLatex(identity.fullName)}}}`,
   ];
+  if (headline.trim()) lines.push(`  \\\\[2pt] \\textit{${escapeLatex(headline.trim())}}`);
   if (contact.length) lines.push(`  \\\\[3pt] ${contact.join(" \\quad|\\quad ")}`);
   if (links.length) lines.push(`  \\\\[2pt] ${links.join(" \\quad|\\quad ")}`);
   lines.push("\\end{center}");
@@ -74,75 +78,58 @@ function header(identity: Identity): string {
 }
 
 function section(title: string, body: string): string {
-  return `\\cvsection{${title}}\n${body}`.trimEnd();
+  return `\\cvsection{${escapeLatex(title)}}\n${body}`.trimEnd();
+}
+
+function entryBody(entry: ProfileEntry): string {
+  const dates = dateRange(entry.start, entry.end, entry.current);
+  const subheading = [
+    escapeLatex(entry.subheading),
+    entry.link ? link(entry.link, entry.link.replace(/^https?:\/\//, "")) : "",
+  ]
+    .filter(Boolean)
+    .join(" \\quad ");
+  const bullets = entry.bullets
+    .filter((bullet) => bullet.text.trim())
+    .map((bullet) => `    \\item ${escapeLatex(bullet.text)}`)
+    .join("\n");
+  const bulletBlock = bullets ? `  \\begin{subitems}\n${bullets}\n  \\end{subitems}` : "";
+
+  return [
+    `  \\cventry{${escapeLatex(entry.heading)}}{${subheading}}{${escapeLatex(entry.location)}}{${escapeLatex(dates)}}`,
+    bulletBlock,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function renderBody(doc: CvDocument): string {
-  const blocks: string[] = [header(doc.identity)];
+  const summary = doc.summary.trim();
+  const blocks: string[] = [header(doc.identity, summary ? "" : doc.headline ?? "")];
 
-  for (const key of doc.sectionOrder) {
-    if (key === "summary") {
-      const summary = doc.summary.trim();
-      if (summary) blocks.push(section("Summary", escapeLatex(summary)));
+  if (summary) blocks.push(section("Summary", escapeLatex(summary)));
+
+  for (const item of doc.sections) {
+    if (item.kind === "text") {
+      if (item.text.trim()) blocks.push(section(item.title, escapeLatex(item.text)));
       continue;
     }
 
-    if (key === "skills") {
-      if (!doc.skills.length) continue;
-      const lines = doc.skills
+    if (item.kind === "groups") {
+      const lines = item.groups
         .filter((group) => group.items.length)
-        .map((group) => `\\cvskill{${escapeLatex(group.label)}}{${group.items.map(escapeLatex).join(", ")}}`);
-      if (lines.length) blocks.push(section("Technical Skills", lines.join("\n")));
+        .map(
+          (group) =>
+            `\\cvskill{${escapeLatex(group.label)}}{${group.items.map(escapeLatex).join(", ")}}`,
+        );
+      if (lines.length) blocks.push(section(item.title, lines.join("\n")));
       continue;
     }
 
-    if (key === "experience") {
-      if (!doc.experience.length) continue;
-      const entries = doc.experience.map((entry) => {
-        const dates = dateRange(entry.start, entry.end, entry.current);
-        const bullets = entry.bullets
-          .filter((bullet) => bullet.text.trim())
-          .map((bullet) => `    \\item ${escapeLatex(bullet.text)}`)
-          .join("\n");
-        return [
-          `  \\begin{cvjob}{${escapeLatex(entry.company)}}{${escapeLatex(entry.location)}}{${escapeLatex(entry.role)}}{${escapeLatex(dates)}}`,
-          bullets,
-          "  \\end{cvjob}",
-        ]
-          .filter(Boolean)
-          .join("\n");
-      });
-      blocks.push(section("Experience", `\\begin{itemize}\n${entries.join("\n")}\n\\end{itemize}`));
-      continue;
-    }
-
-    if (key === "projects") {
-      if (!doc.projects.length) continue;
-      const entries = doc.projects.map((entry) => {
-        const bullets = entry.bullets
-          .filter((bullet) => bullet.text.trim())
-          .map((bullet) => `    \\item ${escapeLatex(bullet.text)}`)
-          .join("\n");
-        return [
-          `  \\begin{cvproject}{${escapeLatex(entry.name)}}{${escapeLatex(entry.stack)}}`,
-          bullets,
-          "  \\end{cvproject}",
-        ]
-          .filter(Boolean)
-          .join("\n");
-      });
-      blocks.push(section("Selected Projects", `\\begin{itemize}\n${entries.join("\n")}\n\\end{itemize}`));
-      continue;
-    }
-
-    if (key === "education") {
-      if (!doc.education.length) continue;
-      const lines = doc.education.map((entry) => {
-        const dates = dateRange(entry.start, entry.end, false);
-        const where = [entry.institution, entry.location].filter(Boolean).join(", ");
-        return `\\cvedu{${escapeLatex(entry.degree)}}{${escapeLatex(where)}${dates ? ` --- ${escapeLatex(dates)}` : ""}}`;
-      });
-      blocks.push(section("Education", lines.join("\n")));
+    const entries = item.entries.filter((entry) => entry.heading.trim());
+    if (entries.length) {
+      const body = `\\begin{itemize}\n${entries.map(entryBody).join("\n")}\n\\end{itemize}`;
+      blocks.push(section(item.title, body));
     }
   }
 

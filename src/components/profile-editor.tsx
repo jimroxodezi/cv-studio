@@ -3,11 +3,11 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type {
-  Education,
-  Experience,
   ProfileData,
-  Project,
-  SkillGroup,
+  ProfileEntry,
+  ProfileGroup,
+  ProfileSection,
+  SectionKind,
 } from "@/lib/profile";
 import { Badge, Card, Field } from "@/components/ui";
 
@@ -15,21 +15,46 @@ function uid(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`;
 }
 
-const tabs = [
-  "Identity",
-  "Summary",
-  "Skills",
-  "Experience",
-  "Projects",
-  "Education",
-  "Guardrails",
-] as const;
-type Tab = (typeof tabs)[number];
+type Tab = "Identity" | "Summary" | "Sections" | "Guardrails";
+const tabs: Tab[] = ["Identity", "Summary", "Sections", "Guardrails"];
+
+const kindLabels: Record<SectionKind, string> = {
+  entries: "Dated rows",
+  groups: "Labelled lists",
+  text: "Prose block",
+};
+
+const kindHints: Record<SectionKind, string> = {
+  entries: "Jobs, degrees, placements, licenses, publications, awards — anything with a title and usually dates.",
+  groups: "Compact lists such as skills, languages, or equipment. Each row is one line on the CV.",
+  text: "A short paragraph with no rows, such as a profile or research statement.",
+};
+
+const sectionTemplates: Record<SectionKind, { title: string; body: string }> = {
+  entries: { title: "Experience", body: "heading, subheading, dates, bullets" },
+  groups: { title: "Skills", body: "label and comma-separated items" },
+  text: { title: "Profile", body: "a short prose block" },
+};
+
+function cleanProfile(profile: ProfileData): ProfileData {
+  return {
+    ...profile,
+    sections: profile.sections.map((section) => ({
+      ...section,
+      entries: section.entries
+        .filter((entry) => entry.heading.trim())
+        .map((entry) => ({ ...entry, bullets: entry.bullets.filter((bullet) => bullet.text.trim()) })),
+      groups: section.groups
+        .map((group) => ({ ...group, items: group.items.map((item) => item.trim()).filter(Boolean) }))
+        .filter((group) => group.label.trim() && group.items.length),
+    })),
+  };
+}
 
 export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData }) {
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileData>(initialProfile);
-  const [tab, setTab] = useState<Tab>("Identity");
+  const [tab, setTab] = useState<Tab>("Sections");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -45,38 +70,97 @@ export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData 
     setDirty(true);
   }
 
-  function updateExperience(id: string, patch: Partial<Experience>) {
+  function updateSection(id: string, patch: Partial<ProfileSection>) {
     update(
-      "experience",
-      profile.experience.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)),
+      "sections",
+      profile.sections.map((section) => (section.id === id ? { ...section, ...patch } : section)),
     );
   }
 
-  function updateProject(id: string, patch: Partial<Project>) {
-    update(
-      "projects",
-      profile.projects.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)),
-    );
+  function moveSection(id: string, direction: -1 | 1) {
+    const index = profile.sections.findIndex((section) => section.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= profile.sections.length) return;
+    const next = [...profile.sections];
+    [next[index], next[target]] = [next[target], next[index]];
+    update("sections", next);
   }
 
-  function updateEducation(id: string, patch: Partial<Education>) {
-    update(
-      "education",
-      profile.education.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)),
-    );
+  function addSection(kind: SectionKind) {
+    const template = sectionTemplates[kind];
+    update("sections", [
+      ...profile.sections,
+      {
+        id: uid("section"),
+        title: template.title,
+        kind,
+        entries: [],
+        groups: [],
+        text: "",
+      },
+    ]);
+  }
+
+  function updateEntry(sectionId: string, entryId: string, patch: Partial<ProfileEntry>) {
+    updateSection(sectionId, {
+      entries: profile.sections
+        .find((section) => section.id === sectionId)!
+        .entries.map((entry) => (entry.id === entryId ? { ...entry, ...patch } : entry)),
+    });
+  }
+
+  function addEntry(sectionId: string) {
+    const section = profile.sections.find((item) => item.id === sectionId);
+    if (!section) return;
+    updateSection(sectionId, {
+      entries: [
+        ...section.entries,
+        {
+          id: uid("entry"),
+          heading: "",
+          subheading: "",
+          location: "",
+          start: "",
+          end: "",
+          current: false,
+          summary: "",
+          link: "",
+          bullets: [],
+          tags: [],
+        },
+      ],
+    });
+  }
+
+  function updateGroup(sectionId: string, groupId: string, patch: Partial<ProfileGroup>) {
+    const section = profile.sections.find((item) => item.id === sectionId);
+    if (!section) return;
+    updateSection(sectionId, {
+      groups: section.groups.map((group) => (group.id === groupId ? { ...group, ...patch } : group)),
+    });
+  }
+
+  function addGroup(sectionId: string) {
+    const section = profile.sections.find((item) => item.id === sectionId);
+    if (!section) return;
+    updateSection(sectionId, {
+      groups: [...section.groups, { id: uid("group"), label: "", items: [] }],
+    });
   }
 
   async function save() {
     setBusy(true);
     setStatus("");
+    const data = cleanProfile(profile);
     try {
       const response = await fetch("/api/profile", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ data: profile }),
+        body: JSON.stringify({ data }),
       });
-      const data = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(data.error || "Could not save.");
+      const body = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(body.error || "Could not save.");
+      setProfile(data);
       setDirty(false);
       setStatus("Saved. Variants and new applications will use this memory.");
       router.refresh();
@@ -87,24 +171,24 @@ export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData 
     }
   }
 
-  const counts = useMemo(
-    () => ({
-      roles: profile.experience.length,
-      bullets: profile.experience.reduce((total, entry) => total + entry.bullets.length, 0),
-      projects: profile.projects.length,
-      skills: profile.skillGroups.reduce((total, group) => total + group.items.length, 0),
-    }),
-    [profile],
-  );
+  const counts = useMemo(() => {
+    const entries = profile.sections.flatMap((section) => section.entries);
+    return {
+      sections: profile.sections.length,
+      entries: entries.length,
+      bullets: entries.reduce((total, entry) => total + entry.bullets.length, 0),
+      groups: profile.sections.reduce((total, section) => total + section.groups.length, 0),
+    };
+  }, [profile]);
 
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
-          <Badge>{counts.roles} roles</Badge>
+          <Badge>{counts.sections} sections</Badge>
+          <Badge>{counts.entries} entries</Badge>
           <Badge>{counts.bullets} bullets</Badge>
-          <Badge>{counts.projects} projects</Badge>
-          <Badge>{counts.skills} skills</Badge>
+          <Badge>{counts.groups} lists</Badge>
           {dirty ? <Badge tone="amber">Unsaved changes</Badge> : <Badge tone="green">Saved</Badge>}
         </div>
         <button type="button" onClick={save} className="btn-primary" disabled={busy}>
@@ -148,13 +232,13 @@ export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData 
             <Field label="Website">
               <input className="input" value={profile.identity.website} onChange={(e) => updateIdentity("website", e.target.value)} />
             </Field>
-            <Field label="GitHub">
+            <Field label="GitHub" hint="Optional. Leave blank if it does not fit your field.">
               <input className="input" value={profile.identity.github} onChange={(e) => updateIdentity("github", e.target.value)} />
             </Field>
             <Field label="LinkedIn">
               <input className="input" value={profile.identity.linkedin} onChange={(e) => updateIdentity("linkedin", e.target.value)} />
             </Field>
-            <Field label="X / Twitter">
+            <Field label="Other profile link">
               <input className="input" value={profile.identity.x} onChange={(e) => updateIdentity("x", e.target.value)} />
             </Field>
           </div>
@@ -168,7 +252,7 @@ export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData 
               <input className="input" value={profile.headline} onChange={(e) => update("headline", e.target.value)} />
             </Field>
             <div className="mt-4">
-              <Field label="Default summary" hint="Used by variants that do not override it.">
+              <Field label="Default summary" hint="Used by variants that do not override it, and as a starting point for tailoring.">
                 <textarea className="input min-h-28" value={profile.summary} onChange={(e) => update("summary", e.target.value)} />
               </Field>
             </div>
@@ -176,33 +260,42 @@ export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData 
           <Card className="p-6">
             <div className="mb-3 flex items-center justify-between">
               <div>
-                <h3 className="font-serif text-lg font-bold">Track positioning</h3>
-                <p className="hint">A short angle per track. Variants use these as their starting summary.</p>
+                <h3 className="font-serif text-lg font-bold">Career angles</h3>
+                <p className="hint">
+                  Optional short summaries for the directions you apply in. Variants can start from one of these.
+                </p>
               </div>
               <button
                 type="button"
                 className="btn-secondary"
                 onClick={() =>
-                  update("positioning", { ...profile.positioning, [`track-${Object.keys(profile.positioning).length + 1}`]: "" })
+                  update("positioning", {
+                    ...profile.positioning,
+                    [`angle-${Object.keys(profile.positioning).length + 1}`]: "",
+                  })
                 }
               >
-                Add track
+                Add angle
               </button>
             </div>
             <div className="space-y-3">
               {Object.entries(profile.positioning).map(([key, value]) => (
-                <div key={key} className="grid gap-2 md:grid-cols-[160px_1fr_auto]">
+                <div key={key} className="grid gap-2 md:grid-cols-[200px_1fr_auto]">
                   <input
                     className="input"
                     value={key}
                     onChange={(e) => {
                       const next = { ...profile.positioning };
                       delete next[key];
-                      next[e.target.value || "track"] = value;
+                      next[e.target.value || "angle"] = value;
                       update("positioning", next);
                     }}
                   />
-                  <input className="input" value={value} onChange={(e) => update("positioning", { ...profile.positioning, [key]: e.target.value })} />
+                  <input
+                    className="input"
+                    value={value}
+                    onChange={(e) => update("positioning", { ...profile.positioning, [key]: e.target.value })}
+                  />
                   <button
                     type="button"
                     className="btn-ghost"
@@ -216,331 +309,288 @@ export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData 
                   </button>
                 </div>
               ))}
-              {!Object.keys(profile.positioning).length ? <p className="hint">No track positioning yet.</p> : null}
+              {!Object.keys(profile.positioning).length ? <p className="hint">No career angles yet.</p> : null}
             </div>
           </Card>
         </div>
       ) : null}
 
-      {tab === "Skills" ? (
-        <Card className="p-6">
-          <div className="mb-4 flex items-center justify-between">
+      {tab === "Sections" ? (
+        <div className="space-y-4">
+          <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
-              <h3 className="font-serif text-lg font-bold">Skill groups</h3>
-              <p className="hint">Each group becomes one line on the CV. Only list skills you can evidence.</p>
+              <h3 className="font-serif text-lg font-bold">Build your own sections</h3>
+              <p className="hint">
+                There is no fixed CV shape. Use the titles and rows that fit your profession, and drag
+                the arrows to set their order.
+              </p>
             </div>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() =>
-                update("skillGroups", [
-                  ...profile.skillGroups,
-                  { id: uid("skill"), label: "New group", items: [], tracks: [] } as SkillGroup,
-                ])
-              }
-            >
-              Add group
-            </button>
-          </div>
-          <div className="space-y-4">
-            {profile.skillGroups.map((group) => (
-              <div key={group.id} className="rounded-xl border border-stone-200 p-4">
-                <div className="grid gap-3 md:grid-cols-[220px_1fr_auto]">
-                  <Field label="Label">
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(kindLabels) as SectionKind[]).map((kind) => (
+                <button key={kind} type="button" className="btn-secondary" onClick={() => addSection(kind)}>
+                  + {kindLabels[kind]}
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          {profile.sections.map((section, index) => (
+            <Card key={section.id} className="p-5">
+              <div className="mb-4 flex flex-wrap items-end gap-3">
+                <div className="min-w-52 flex-1">
+                  <Field label="Section title">
                     <input
                       className="input"
-                      value={group.label}
-                      onChange={(e) =>
-                        update(
-                          "skillGroups",
-                          profile.skillGroups.map((item) => (item.id === group.id ? { ...item, label: e.target.value } : item)),
-                        )
-                      }
+                      value={section.title}
+                      onChange={(e) => updateSection(section.id, { title: e.target.value })}
                     />
                   </Field>
-                  <Field label="Items" hint="Comma-separated.">
-                    <input
+                </div>
+                <div className="w-44">
+                  <Field label="Content type">
+                    <select
                       className="input"
-                      value={group.items.join(", ")}
-                      onChange={(e) =>
-                        update(
-                          "skillGroups",
-                          profile.skillGroups.map((item) =>
-                            item.id === group.id
-                              ? { ...item, items: e.target.value.split(",").map((value) => value.trim()).filter(Boolean) }
-                              : item,
-                          ),
-                        )
-                      }
-                    />
+                      value={section.kind}
+                      onChange={(e) => updateSection(section.id, { kind: e.target.value as SectionKind })}
+                    >
+                      {(Object.keys(kindLabels) as SectionKind[]).map((kind) => (
+                        <option key={kind} value={kind}>
+                          {kindLabels[kind]}
+                        </option>
+                      ))}
+                    </select>
                   </Field>
+                </div>
+                <div className="flex items-center gap-1 pb-0.5">
                   <button
                     type="button"
-                    className="btn-ghost self-end"
-                    onClick={() => update("skillGroups", profile.skillGroups.filter((item) => item.id !== group.id))}
+                    className="btn-ghost px-2 py-1 text-xs"
+                    onClick={() => moveSection(section.id, -1)}
+                    disabled={index === 0}
+                    title="Move up"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost px-2 py-1 text-xs"
+                    onClick={() => moveSection(section.id, 1)}
+                    disabled={index === profile.sections.length - 1}
+                    title="Move down"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost px-2 py-1 text-xs text-red-600"
+                    onClick={() => update("sections", profile.sections.filter((item) => item.id !== section.id))}
                   >
                     Remove
                   </button>
                 </div>
               </div>
-            ))}
-            {!profile.skillGroups.length ? <p className="hint">No skill groups yet.</p> : null}
-          </div>
-        </Card>
-      ) : null}
+              <p className="mb-4 text-xs text-stone-500">{kindHints[section.kind]}</p>
 
-      {tab === "Experience" ? (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() =>
-                update("experience", [
-                  ...profile.experience,
-                  {
-                    id: uid("exp"),
-                    company: "",
-                    location: "",
-                    role: "",
-                    start: "",
-                    end: "",
-                    current: false,
-                    summary: "",
-                    bullets: [],
-                    tags: [],
-                  } as Experience,
-                ])
-              }
-            >
-              Add role
-            </button>
-          </div>
-          {profile.experience.map((entry, index) => (
-            <Card key={entry.id} className="p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-serif text-lg font-bold">
-                  {entry.role || "New role"} {entry.company ? `· ${entry.company}` : ""}
-                </h3>
-                <button
-                  type="button"
-                  className="btn-ghost text-red-600"
-                  onClick={() => update("experience", profile.experience.filter((item) => item.id !== entry.id))}
-                >
-                  Remove
-                </button>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Company">
-                  <input className="input" value={entry.company} onChange={(e) => updateExperience(entry.id, { company: e.target.value })} />
-                </Field>
-                <Field label="Role">
-                  <input className="input" value={entry.role} onChange={(e) => updateExperience(entry.id, { role: e.target.value })} />
-                </Field>
-                <Field label="Location">
-                  <input className="input" value={entry.location} onChange={(e) => updateExperience(entry.id, { location: e.target.value })} />
-                </Field>
-                <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                  <Field label="Start">
-                    <input className="input" value={entry.start} onChange={(e) => updateExperience(entry.id, { start: e.target.value })} />
-                  </Field>
-                  <Field label="End">
-                    <input className="input" value={entry.end} onChange={(e) => updateExperience(entry.id, { end: e.target.value })} />
-                  </Field>
-                  <label className="flex items-end gap-2 pb-2 text-xs text-stone-600">
-                    <input
-                      type="checkbox"
-                      checked={entry.current}
-                      onChange={(e) => updateExperience(entry.id, { current: e.target.checked })}
-                    />
-                    Current
-                  </label>
+              {section.kind === "entries" ? (
+                <div className="space-y-4">
+                  <div className="flex justify-end">
+                    <button type="button" className="btn-secondary" onClick={() => addEntry(section.id)}>
+                      Add row
+                    </button>
+                  </div>
+                  {section.entries.map((entry) => (
+                    <div key={entry.id} className="rounded-xl border border-stone-200 p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <h4 className="font-serif text-base font-bold">{entry.heading || "New row"}</h4>
+                        <button
+                          type="button"
+                          className="btn-ghost text-red-600"
+                          onClick={() =>
+                            updateSection(section.id, {
+                              entries: section.entries.filter((item) => item.id !== entry.id),
+                            })
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Field label="Heading" hint="Job title, degree, publication, license, or award.">
+                          <input
+                            className="input"
+                            value={entry.heading}
+                            onChange={(e) => updateEntry(section.id, entry.id, { heading: e.target.value })}
+                          />
+                        </Field>
+                        <Field label="Subheading" hint="Employer, institution, publisher, or context. Optional.">
+                          <input
+                            className="input"
+                            value={entry.subheading}
+                            onChange={(e) => updateEntry(section.id, entry.id, { subheading: e.target.value })}
+                          />
+                        </Field>
+                        <Field label="Location">
+                          <input
+                            className="input"
+                            value={entry.location}
+                            onChange={(e) => updateEntry(section.id, entry.id, { location: e.target.value })}
+                          />
+                        </Field>
+                        <Field label="Link" hint="Optional. A publication, credential, or portfolio URL.">
+                          <input
+                            className="input"
+                            value={entry.link}
+                            onChange={(e) => updateEntry(section.id, entry.id, { link: e.target.value })}
+                          />
+                        </Field>
+                        <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                          <Field label="Start">
+                            <input
+                              className="input"
+                              value={entry.start}
+                              onChange={(e) => updateEntry(section.id, entry.id, { start: e.target.value })}
+                            />
+                          </Field>
+                          <Field label="End">
+                            <input
+                              className="input"
+                              value={entry.end}
+                              onChange={(e) => updateEntry(section.id, entry.id, { end: e.target.value })}
+                            />
+                          </Field>
+                          <label className="flex items-end gap-2 pb-2 text-xs text-stone-600">
+                            <input
+                              type="checkbox"
+                              checked={entry.current}
+                              onChange={(e) => updateEntry(section.id, entry.id, { current: e.target.checked })}
+                            />
+                            Current
+                          </label>
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <Field label="Context or scope" hint="Not printed on the CV; useful for the AI when rewriting.">
+                          <textarea
+                            className="input min-h-16"
+                            value={entry.summary}
+                            onChange={(e) => updateEntry(section.id, entry.id, { summary: e.target.value })}
+                          />
+                        </Field>
+                      </div>
+                      <div className="mt-4">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="label mb-0">Bullets ({entry.bullets.length})</span>
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-amber-800 hover:underline"
+                            onClick={() =>
+                              updateEntry(section.id, entry.id, {
+                                bullets: [...entry.bullets, { id: uid("bullet"), text: "" }],
+                              })
+                            }
+                          >
+                            + Add bullet
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {entry.bullets.map((bullet) => (
+                            <div key={bullet.id} className="flex gap-2">
+                              <textarea
+                                className="input min-h-14 flex-1"
+                                value={bullet.text}
+                                placeholder="Strong verb + specific skill or method + result."
+                                onChange={(e) =>
+                                  updateEntry(section.id, entry.id, {
+                                    bullets: entry.bullets.map((item) =>
+                                      item.id === bullet.id ? { ...item, text: e.target.value } : item,
+                                    ),
+                                  })
+                                }
+                              />
+                              <button
+                                type="button"
+                                className="btn-ghost self-start text-red-600"
+                                onClick={() =>
+                                  updateEntry(section.id, entry.id, {
+                                    bullets: entry.bullets.filter((item) => item.id !== bullet.id),
+                                  })
+                                }
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {!section.entries.length ? (
+                    <p className="text-sm text-stone-500">No rows in this section yet.</p>
+                  ) : null}
                 </div>
-              </div>
-              <div className="mt-3">
-                <Field label="Scope / context" hint="Not printed; useful for the AI when rewriting.">
-                  <textarea className="input min-h-16" value={entry.summary} onChange={(e) => updateExperience(entry.id, { summary: e.target.value })} />
-                </Field>
-              </div>
-              <div className="mt-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="label mb-0">Bullets ({entry.bullets.length})</span>
-                  <button
-                    type="button"
-                    className="text-xs font-semibold text-amber-800 hover:underline"
-                    onClick={() =>
-                      updateExperience(entry.id, {
-                        bullets: [...entry.bullets, { id: uid("bullet"), text: "" }],
-                      })
-                    }
-                  >
-                    + Add bullet
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {entry.bullets.map((bullet) => (
-                    <div key={bullet.id} className="flex gap-2">
-                      <textarea
-                        className="input min-h-14 flex-1"
-                        value={bullet.text}
-                        placeholder="Strong verb + technology + result."
-                        onChange={(e) =>
-                          updateExperience(entry.id, {
-                            bullets: entry.bullets.map((item) => (item.id === bullet.id ? { ...item, text: e.target.value } : item)),
-                          })
-                        }
-                      />
+              ) : null}
+
+              {section.kind === "groups" ? (
+                <div className="space-y-3">
+                  <div className="flex justify-end">
+                    <button type="button" className="btn-secondary" onClick={() => addGroup(section.id)}>
+                      Add list
+                    </button>
+                  </div>
+                  {section.groups.map((group) => (
+                    <div key={group.id} className="grid gap-3 rounded-xl border border-stone-200 p-4 md:grid-cols-[220px_1fr_auto]">
+                      <Field label="Label">
+                        <input
+                          className="input"
+                          value={group.label}
+                          onChange={(e) => updateGroup(section.id, group.id, { label: e.target.value })}
+                        />
+                      </Field>
+                      <Field label="Items" hint="Comma-separated. They render on one line.">
+                        <input
+                          className="input"
+                          value={group.items.join(", ")}
+                          onChange={(e) =>
+                            updateGroup(section.id, group.id, {
+                              items: e.target.value.split(",").map((value) => value.trimStart()),
+                            })
+                          }
+                        />
+                      </Field>
                       <button
                         type="button"
-                        className="btn-ghost self-start text-red-600"
+                        className="btn-ghost self-end text-red-600"
                         onClick={() =>
-                          updateExperience(entry.id, { bullets: entry.bullets.filter((item) => item.id !== bullet.id) })
-                        }
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <p className="mt-3 text-[11px] text-stone-400">Role {index + 1}</p>
-            </Card>
-          ))}
-          {!profile.experience.length ? (
-            <Card className="p-6 text-sm text-stone-500">No roles yet. Add your first one.</Card>
-          ) : null}
-        </div>
-      ) : null}
-
-      {tab === "Projects" ? (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() =>
-                update("projects", [
-                  ...profile.projects,
-                  { id: uid("proj"), name: "", stack: "", link: "", bullets: [], tags: [] } as Project,
-                ])
-              }
-            >
-              Add project
-            </button>
-          </div>
-          {profile.projects.map((entry) => (
-            <Card key={entry.id} className="p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-serif text-lg font-bold">{entry.name || "New project"}</h3>
-                <button
-                  type="button"
-                  className="btn-ghost text-red-600"
-                  onClick={() => update("projects", profile.projects.filter((item) => item.id !== entry.id))}
-                >
-                  Remove
-                </button>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Name">
-                  <input className="input" value={entry.name} onChange={(e) => updateProject(entry.id, { name: e.target.value })} />
-                </Field>
-                <Field label="Stack" hint="Comma-separated, shown next to the name.">
-                  <input className="input" value={entry.stack} onChange={(e) => updateProject(entry.id, { stack: e.target.value })} />
-                </Field>
-              </div>
-              <div className="mt-3">
-                <Field label="Link">
-                  <input className="input" value={entry.link} onChange={(e) => updateProject(entry.id, { link: e.target.value })} />
-                </Field>
-              </div>
-              <div className="mt-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="label mb-0">Bullets ({entry.bullets.length})</span>
-                  <button
-                    type="button"
-                    className="text-xs font-semibold text-amber-800 hover:underline"
-                    onClick={() => updateProject(entry.id, { bullets: [...entry.bullets, { id: uid("bullet"), text: "" }] })}
-                  >
-                    + Add bullet
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {entry.bullets.map((bullet) => (
-                    <div key={bullet.id} className="flex gap-2">
-                      <textarea
-                        className="input min-h-14 flex-1"
-                        value={bullet.text}
-                        onChange={(e) =>
-                          updateProject(entry.id, {
-                            bullets: entry.bullets.map((item) => (item.id === bullet.id ? { ...item, text: e.target.value } : item)),
+                          updateSection(section.id, {
+                            groups: section.groups.filter((item) => item.id !== group.id),
                           })
                         }
-                      />
-                      <button
-                        type="button"
-                        className="btn-ghost self-start text-red-600"
-                        onClick={() => updateProject(entry.id, { bullets: entry.bullets.filter((item) => item.id !== bullet.id) })}
                       >
-                        ✕
+                        Remove
                       </button>
                     </div>
                   ))}
+                  {!section.groups.length ? <p className="text-sm text-stone-500">No lists in this section yet.</p> : null}
                 </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      ) : null}
+              ) : null}
 
-      {tab === "Education" ? (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() =>
-                update("education", [
-                  ...profile.education,
-                  { id: uid("edu"), degree: "", institution: "", location: "", start: "", end: "", details: "" } as Education,
-                ])
-              }
-            >
-              Add education
-            </button>
-          </div>
-          {profile.education.map((entry) => (
-            <Card key={entry.id} className="p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-serif text-lg font-bold">{entry.degree || "New qualification"}</h3>
-                <button
-                  type="button"
-                  className="btn-ghost text-red-600"
-                  onClick={() => update("education", profile.education.filter((item) => item.id !== entry.id))}
-                >
-                  Remove
-                </button>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Degree">
-                  <input className="input" value={entry.degree} onChange={(e) => updateEducation(entry.id, { degree: e.target.value })} />
+              {section.kind === "text" ? (
+                <Field label="Text" hint="Rendered as a short paragraph under the section title.">
+                  <textarea
+                    className="input min-h-28"
+                    value={section.text}
+                    onChange={(e) => updateSection(section.id, { text: e.target.value })}
+                  />
                 </Field>
-                <Field label="Institution">
-                  <input className="input" value={entry.institution} onChange={(e) => updateEducation(entry.id, { institution: e.target.value })} />
-                </Field>
-                <Field label="Location">
-                  <input className="input" value={entry.location} onChange={(e) => updateEducation(entry.id, { location: e.target.value })} />
-                </Field>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="Start year">
-                    <input className="input" value={entry.start} onChange={(e) => updateEducation(entry.id, { start: e.target.value })} />
-                  </Field>
-                  <Field label="End year">
-                    <input className="input" value={entry.end} onChange={(e) => updateEducation(entry.id, { end: e.target.value })} />
-                  </Field>
-                </div>
-              </div>
+              ) : null}
             </Card>
           ))}
+
+          {!profile.sections.length ? (
+            <Card className="p-6 text-sm text-stone-500">
+              No sections yet. Add one above, or import a dump and let the studio build them for you.
+            </Card>
+          ) : null}
         </div>
       ) : null}
 
@@ -548,8 +598,8 @@ export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData 
         <Card className="p-6">
           <h3 className="font-serif text-lg font-bold">Do-not-claim list</h3>
           <p className="hint mb-4">
-            Anything here is checked against every draft. If the model uses it, the CV is
-            flagged before you send it.
+            Anything here is checked against every draft. If the model uses it, the CV is flagged
+            before you send it.
           </p>
           <div className="space-y-2">
             {profile.doNotClaim.map((item, index) => (
@@ -558,7 +608,10 @@ export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData 
                   className="input"
                   value={item}
                   onChange={(e) =>
-                    update("doNotClaim", profile.doNotClaim.map((value, i) => (i === index ? e.target.value : value)))
+                    update(
+                      "doNotClaim",
+                      profile.doNotClaim.map((value, i) => (i === index ? e.target.value : value)),
+                    )
                   }
                 />
                 <button
@@ -581,6 +634,7 @@ export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData 
           </div>
         </Card>
       ) : null}
+
 
       <div className="sticky bottom-4 mt-6 flex justify-end">
         <button type="button" onClick={save} className="btn-primary shadow-lg" disabled={busy}>

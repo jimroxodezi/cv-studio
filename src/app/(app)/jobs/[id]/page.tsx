@@ -6,6 +6,7 @@ import { documents, variants } from "@/lib/db/schema";
 import { getOwnedJob } from "@/lib/guards";
 import { PageHeader } from "@/components/ui";
 import { JobWorkspace } from "@/components/job-workspace";
+import type { LetterVersion } from "@/components/cover-letter-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -24,11 +25,16 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
         pageCount: documents.pageCount,
         warnings: documents.warnings,
         createdAt: documents.createdAt,
+        kind: documents.kind,
+        meta: documents.meta,
       })
       .from(documents)
       .where(eq(documents.jobId, id))
       .orderBy(desc(documents.createdAt)),
   ]);
+
+  const cvRows = versionRows.filter((row) => row.kind !== "cover_letter");
+  const letterRows = versionRows.filter((row) => row.kind === "cover_letter");
 
   const orderedVariants = job.variantId
     ? [...variantRows].sort((a, b) => (a.id === job.variantId ? -1 : b.id === job.variantId ? 1 : 0))
@@ -39,7 +45,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
       <PageHeader
         eyebrow="Application"
         title={job.company ? `${job.company} — ${job.role || "role"}` : job.role || "Application"}
-        description="Tailor, inspect the coverage and gaps, then download the PDF and LaTeX. Every build is versioned."
+        description="Tailor the CV, write the cover letter, inspect the coverage and gaps, then download the PDF and LaTeX. Every build is versioned."
         actions={
           <>
             <Link href="/jobs" className="btn-secondary">
@@ -66,12 +72,19 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           result: job.result ?? null,
         }}
         variants={orderedVariants.map((variant) => ({ id: variant.id, name: variant.name, track: variant.track }))}
-        versions={versionRows.map((version) => ({
+        versions={cvRows.map((version) => ({
           id: version.id,
           label: version.label,
           pageCount: version.pageCount,
           warnings: version.warnings,
           createdAt: version.createdAt.toISOString(),
+        }))}
+        letters={letterRows.map((row) => ({
+          id: row.id,
+          label: row.label,
+          warnings: row.warnings,
+          createdAt: row.createdAt.toISOString(),
+          letter: (row.meta as { letter?: LetterVersion["letter"] }).letter ?? null,
         }))}
         defaultVariantId={job.variantId ?? orderedVariants[0]?.id}
       />

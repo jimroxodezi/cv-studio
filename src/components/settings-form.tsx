@@ -71,7 +71,7 @@ export function SettingsForm({
       });
       const data = (await response.json()) as {
         error?: string;
-        configured?: { openai: boolean; anthropic: boolean; openrouter: boolean };
+        configured?: Record<ProviderKey, boolean>;
       };
       if (!response.ok) throw new Error(data.error || "Could not save.");
       if (data.configured) setConfigured(data.configured);
@@ -86,7 +86,18 @@ export function SettingsForm({
     }
   }
 
-  const anyKey = configured.openai || configured.anthropic || configured.openrouter || serverKeyAvailable;
+  const anyKey = Object.values(configured).some(Boolean) || serverKeyAvailable;
+
+  function chooseProvider(next: string) {
+    setProvider(next);
+    const suggestion = suggestedModels[next as ProviderKey] ?? "";
+    const otherDefaults = Object.entries(suggestedModels)
+      .filter(([id]) => id !== next)
+      .map(([, value]) => value);
+    // Keep a custom model id, but replace a blank field or another provider's
+    // default so `deepseek-chat` is not sent to OpenAI and vice versa.
+    if (!model.trim() || otherDefaults.includes(model.trim())) setModel(suggestion);
+  }
 
   return (
     <form onSubmit={save} className="space-y-5">
@@ -108,7 +119,7 @@ export function SettingsForm({
         </p>
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Provider">
-            <select className="input" value={provider} onChange={(e) => setProvider(e.target.value)}>
+            <select className="input" value={provider} onChange={(e) => chooseProvider(e.target.value)}>
               {providers.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.label}
@@ -116,7 +127,10 @@ export function SettingsForm({
               ))}
             </select>
           </Field>
-          <Field label="Model" hint="For example gpt-4o-mini, claude-sonnet-4-5, or an OpenRouter model id.">
+          <Field
+            label="Model"
+            hint="For example gpt-4o-mini, claude-sonnet-4-5, deepseek-chat, or an OpenRouter model id."
+          >
             <input className="input" value={model} onChange={(e) => setModel(e.target.value)} />
           </Field>
         </div>

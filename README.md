@@ -107,7 +107,7 @@ cp latex/vendor/*.sty latex/vendor/*.cfg latex/vendor/*.def ~/texmf/tex/latex/cv
 | `APP_URL` | Public URL, used in magic links and origin checks |
 | `ADMIN_EMAIL` | First sign-in with this email becomes the admin |
 | `ALLOW_OPEN_SIGNUP` | `false` by default; keep invite-only |
-| `DEFAULT_LLM_PROVIDER` | `openai`, `anthropic`, or `openrouter` |
+| `DEFAULT_LLM_PROVIDER` | `openai`, `anthropic`, `openrouter`, or `deepseek` |
 | `DEFAULT_LLM_API_KEY` | Server fallback key for users without their own |
 | `DEFAULT_LLM_MODEL` | Default model id |
 | `DEFAULT_LLM_BASE_URL` | Optional OpenAI-compatible gateway |
@@ -115,7 +115,8 @@ cp latex/vendor/*.sty latex/vendor/*.cfg latex/vendor/*.def ~/texmf/tex/latex/cv
 | `SMTP_*`, `MAIL_FROM` | Magic-link and invite email |
 | `LATEX_MAX_CONCURRENCY` | Parallel PDF compilations (default 1; raise only with spare RAM) |
 
-Users can add their own OpenAI, Anthropic, or OpenRouter key in **Settings**.
+Users can add their own OpenAI, Anthropic, OpenRouter, or DeepSeek key in **Settings**.
+For DeepSeek use `deepseek-chat` (or `deepseek-reasoner`) as the model.
 Keys are encrypted before they touch the database and are never sent back to
 the browser.
 

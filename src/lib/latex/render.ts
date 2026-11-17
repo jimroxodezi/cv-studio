@@ -66,15 +66,9 @@ function header(identity: Identity, headline: string): string {
   if (identity.linkedin) links.push(link(identity.linkedin, "linkedin"));
   if (identity.x) links.push(link(identity.x, identity.x.replace(/^https?:\/\//, "").replace(/\/$/, "")));
 
-  const lines = [
-    "\\begin{center}",
-    `  {\\LARGE \\textbf{${escapeLatex(identity.fullName)}}}`,
-  ];
-  if (headline.trim()) lines.push(`  \\\\[2pt] \\textit{${escapeLatex(headline.trim())}}`);
-  if (contact.length) lines.push(`  \\\\[3pt] ${contact.join(" \\quad|\\quad ")}`);
-  if (links.length) lines.push(`  \\\\[2pt] ${links.join(" \\quad|\\quad ")}`);
-  lines.push("\\end{center}");
-  return lines.join("\n");
+  // Typography lives in the preamble; the renderer only supplies the parts.
+  const separator = " \\enspace\\textperiodcentered\\enspace ";
+  return `\\cvheader{${escapeLatex(identity.fullName)}}{${escapeLatex(headline.trim())}}{${contact.join(separator)}}{${links.join(separator)}}`;
 }
 
 function section(title: string, body: string): string {
@@ -128,7 +122,7 @@ export function renderBody(doc: CvDocument): string {
 
     const entries = item.entries.filter((entry) => entry.heading.trim());
     if (entries.length) {
-      const body = `\\begin{itemize}\n${entries.map(entryBody).join("\n")}\n\\end{itemize}`;
+      const body = `\\begin{entrylist}\n${entries.map(entryBody).join("\n")}\n\\end{entrylist}`;
       blocks.push(section(item.title, body));
     }
   }

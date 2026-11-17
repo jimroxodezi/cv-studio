@@ -8,7 +8,9 @@
 % loading template/cv.tex; ../../ is the default for variants/* and jobs/*.
 \providecommand{\cvroot}{../../}
 
-\usepackage[margin=1.2cm]{geometry}
+% Side margins are wider than the top and bottom: a CV is read as a
+% column of text, and text that runs to the paper edge reads as dense.
+\usepackage[top=1.1cm,bottom=1.1cm,left=1.5cm,right=1.5cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
@@ -16,7 +18,14 @@
 \usepackage{enumitem}
 \usepackage{titlesec}
 \usepackage{ragged2e}
+\usepackage{color}
 \usepackage[hidelinks]{hyperref}
+
+% Two neutrals keep the page calm: near-black for headings, a printed
+% grey for rules and secondary metadata. Body text stays pure black.
+\definecolor{cvink}{gray}{0.10}
+\definecolor{cvrule}{gray}{0.60}
+\definecolor{cvmuted}{gray}{0.35}
 
 % Machine-readable text layer: helps ATS parsers and copy-paste.
 \ifdefined\pdfgentounicode
@@ -40,19 +49,42 @@
 \exhyphenpenalty=10000
 
 %---------------------------- sections ----------------------------
-\titleformat{\section}[block]{\large\bfseries}{}{0pt}{}%
-  [\vspace{0.08\baselineskip}\titlerule\vspace{0.08\baselineskip}]
-\titleformat{name=\section,numberless}[block]{\large\bfseries}{}{0pt}{}%
-  [\vspace{0.08\baselineskip}\titlerule\vspace{0.08\baselineskip}]
-\titlespacing*{\section}{0pt}{6pt}{3pt}
-\titlespacing*{name=\section,numberless}{0pt}{6pt}{3pt}
+% Sans headings against a serif body give the page a clear hierarchy:
+% a recruiter skimming sees the section bands first, then the prose.
+% Spacing is fixed (no plus/minus glue) so a sparse CV never opens gaps.
+% The gap after the rule is built here instead of in \titlespacing's "after"
+% slot. A trailing \penalty10000 immediately before the glue makes that glue
+% an illegal page breakpoint: a heading can then never sit alone at the foot
+% of a page, which \nopagebreak alone could not prevent (it lands after the
+% glue, too late for TeX's page builder).
+\titleformat{\section}[block]{\large\sffamily\bfseries\color{cvink}}{}{0pt}{}%
+  [\vspace{3pt}{\color{cvrule}\titlerule[0.5pt]}\vspace{5pt}\penalty10000]
+\titleformat{name=\section,numberless}[block]{\large\sffamily\bfseries\color{cvink}}{}{0pt}{}%
+  [\vspace{3pt}{\color{cvrule}\titlerule[0.5pt]}\vspace{5pt}\penalty10000]
+\titlespacing*{\section}{0pt}{11pt}{0pt}
+\titlespacing*{name=\section,numberless}{0pt}{11pt}{0pt}
 
 %----------------------------- lists ------------------------------
-\setlist[itemize]{leftmargin=1.1em, labelsep=0.35em, noitemsep,
-                  topsep=1pt, parsep=0pt, partopsep=0pt}
+% Body bullets: a small raised dot, not the full-size class bullet.
+\setlist[itemize]{leftmargin=1.15em, labelsep=0.5em,
+                  label={\raisebox{0.2ex}{\scriptsize$\bullet$}},
+                  topsep=1pt, parsep=0pt, partopsep=0pt, itemsep=2pt}
+
+% Entry list: jobs, degrees and projects. No marker -- a bullet in front
+% of every job title is noise, and the bold title already anchors the eye.
+\newlist{entrylist}{itemize}{1}
+\setlist[entrylist]{label={}, leftmargin=0pt, labelsep=0pt,
+                    topsep=0pt, parsep=0pt, partopsep=0pt, itemsep=6pt}
+
+% Achievement bullets nested under an entry. Tight leading, one line of
+% separation is enough because the parent spacing already sets the break.
+% \interlinepenalty keeps a bullet on one page: a two-line achievement
+% that breaks after its first line reads as a mistake in print.
 \newlist{subitems}{itemize}{1}
-\setlist[subitems]{label=$\circ$, leftmargin=1.3em, nosep,
-                   topsep=0pt, parsep=0pt, partopsep=0pt, itemsep=0pt}
+\setlist[subitems]{label={\raisebox{0.2ex}{\scriptsize$\bullet$}},
+                   leftmargin=1.15em, labelsep=0.5em,
+                   topsep=1pt, parsep=0pt, partopsep=0pt, itemsep=1pt,
+                   before={\interlinepenalty=10000}}
 
 %============================ macros ==============================
 % Include a fragment from content/.  Usage: \content{experience/minas}
@@ -67,6 +99,22 @@
 % no glue, so it cannot create a gap.
 \newcommand{\cvsection}[1]{\par\penalty-100 \section*{#1}\nopagebreak[3]}
 
+% Page header, built by the renderer:
+%   \cvheader{Name}{Headline or empty}{Contact line or empty}{Links line or empty}
+% Name, contact and links are centred; a hairline rule closes the block and
+% separates it from the first section without spending a whole section's gap.
+\newcommand{\cvheader}[4]{%
+  \begin{center}%
+    {\LARGE\bfseries #1}%
+    \if\relax\detokenize{#2}\relax\else\\[2pt]{\large #2}\fi%
+    \if\relax\detokenize{#3}\relax\else\\[6pt]{\small #3}\fi%
+    \if\relax\detokenize{#4}\relax\else\\[1pt]{\small #4}\fi%
+  \end{center}%
+  \vspace{-3pt}%
+  \noindent{\color{cvrule}\rule{\linewidth}{0.5pt}}%
+  \par\vspace{1pt}%
+}
+
 % One job entry.  Usage inside \begin{itemize}:
 %   \begin{cvjob}{Company}{Location}{Role title}{Dates} ... \end{cvjob}
 \newenvironment{cvjob}[4]{%
@@ -78,13 +126,17 @@
 }
 
 % One generic entry for any section (job, degree, award, publication...).
-% Usage inside \begin{itemize}:
+% Usage inside \begin{entrylist}:
 %   \cventry{Heading}{Subheading}{Location}{Dates}
-% Follow it with a nested \begin{subitems} ... \end{subitems} only when there
-% are bullets; an empty nested list is a LaTeX error.
+% The heading carries the weight; location and dates sit in the muted grey
+% so the eye reads title first, then metadata. Follow it with a nested
+% \begin{subitems} ... \end{subitems} only when there are bullets; an empty
+% nested list is a LaTeX error.
 \newcommand{\cventry}[4]{%
-  \item \textbf{#1} \hfill #4%
-  \if\relax\detokenize{#2#3}\relax\else\\ \textit{#2} \hfill #3\fi
+  \item {\bfseries\color{cvink}#1}\hfill{\small\textcolor{cvmuted}{#4}}%
+  \if\relax\detokenize{#2#3}\relax\else
+    \\[1pt]\textit{#2}\hfill{\small\textcolor{cvmuted}{#3}}%
+  \fi
 }
 
 % One project entry.  Usage inside \begin{itemize}:
@@ -96,8 +148,20 @@
   \end{subitems}%
 }
 
-% One skills line: \cvskill{Languages}{C++, C, Python}
-\newcommand{\cvskill}[2]{\textbf{#1:} #2\par\vspace{2pt}}
+% One skills line. Each call is its own one-row table, so every label sits on
+% a shared baseline and every value is flush at the same x-position without
+% requiring a surrounding environment (content/skills/*.tex call it directly).
+%   \cvskill{Languages}{C++, C, Python}
+\newlength{\cvskilllabel}
+\setlength{\cvskilllabel}{8em}
+\newcommand{\cvskill}[2]{%
+  \par\noindent
+  \begin{tabular}{@{}p{\cvskilllabel}@{\hspace{0.7em}}p{\dimexpr\linewidth-\cvskilllabel-0.7em\relax}@{}}%
+    \leavevmode\RaggedRight\bfseries\color{cvink}#1: &
+    \leavevmode\RaggedRight #2%
+  \end{tabular}%
+  \par\vspace{2.5pt}%
+}
 
 % One education line: \cvedu{Degree}{Institution --- dates}
 \newcommand{\cvedu}[2]{\textbf{#1} \hfill #2\par\vspace{2pt}}

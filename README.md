@@ -10,6 +10,11 @@ application. Built for a small group of friends, not a public job board.
   that select entries and compile a base CV.
 - **Applications** — paste a posting or a link, get keyword coverage, gaps,
   rewritten bullets, a PDF, and the `.tex` source. Every build is versioned.
+- **Cover letters** — written from the posting and the memory, checked against a
+  list of template phrases, and editable line by line before the PDF is rebuilt.
+- **Snapshots** — clearing, importing a new dump and restoring all snapshot the
+  memory first, so every destructive action is reversible. You can save your own
+  checkpoints too.
 - **Truthfulness check** — every number and date in a tailored draft is compared
   against the memory; untraceable claims are flagged before download.
 - **Real LaTeX** — compiled server-side with the same single-column, table-free
@@ -24,7 +29,7 @@ compressed** and idles at roughly **60 MB RSS**; a PDF compile peaks around
 150 MB.
 
 ```bash
-cd web
+cd cvstudio
 cp .env.example .env
 openssl rand -base64 48   # paste into AUTH_SECRET
 openssl rand -base64 32   # paste into ENCRYPTION_KEY
@@ -156,6 +161,23 @@ Letters use `latex/letter-preamble.tex`, not the CV preamble. It deliberately ke
 `\documentclass` at 10pt: the production image ships Latin Modern only, and an
 11pt base makes the class demand Computer Modern metrics that are not there.
 
+## Snapshots
+
+Every destructive path keeps a copy first, in `profile_snapshots`:
+
+| Trigger | Reason | When |
+|---|---|---|
+| "Clear everything" | `clear` | before the memory is wiped |
+| Import a new dump | `import` | before the whole memory is replaced |
+| Restore an old snapshot | `restore` | before the live memory is overwritten |
+| "Save snapshot" | `manual` | whenever you want a checkpoint |
+
+The last **20 automatic** snapshots are kept per user; automatic means anything with a
+reason other than `manual`. Manual snapshots stay until deleted. A restore also
+re-points variants at section ids that exist, so nothing builds against a memory that
+no longer has them. Snapshots after a restore are only taken when the live memory has
+content, so clearing-then-restoring does not pile up empty copies.
+
 ## Editing and clearing the memory
 
 The profile page edits the memory in place: add or remove sections, rows, bullets,
@@ -205,10 +227,10 @@ fresh dump.
 - No password reset, because there are no passwords. Revoke access by deleting
   the user row (and their data cascades).
 
-## Parent repo
+## Sibling repo
 
-The original single-user LaTeX workspace is still at the repository root:
-`master/career.md`, `content/`, `variants/`, `jobs/`, and `prompts/`. This app
-copies the layout in `latex/preamble.tex` (keep it in sync when the parent
-template changes) and stores per-user content in Postgres instead of `.tex`
-fragments.
+This app grew out of the single-user LaTeX workspace in `../cv`, which holds
+`master/career.md`, `content/`, `variants/`, `jobs/`, and `prompts/`. That repo
+still builds one-off CVs with `./build.sh`; this one owns the web app. They share
+exactly one file: `latex/preamble.tex` here is a copy of `../cv/template/preamble.tex`.
+When the shared layout changes there, copy it here and rebuild the image.

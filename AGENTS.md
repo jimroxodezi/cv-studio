@@ -60,10 +60,15 @@ drizzle/                 migrations; the container applies them on start
 - **`latex/preamble.tex` is a copy of `../cv/template/preamble.tex`.** Change the
   workspace first, then copy here and rebuild.
 - **The production image ships Latin Modern plus the vendored Source Sans Pro** and a
-  pruned TeX tree. Do not add packages or fonts without vendoring them in
-  `latex/vendor` (for a Type1 face: `.tfm`, `.vf`, `.pfb`, `.enc`, and a map line) and
-  updating the Dockerfile keep-list. `letter-preamble.tex` documents why the class
-  base size must stay 10pt.
+  pruned TeX tree: Latin Modern Roman sets body copy and entry titles, Source Sans Pro
+  sets the name, section titles, labels and footer. Do not add packages or fonts
+  without vendoring them in `latex/vendor` (for a Type1 face: `.tfm`, `.vf`, `.pfb`,
+  `.enc`, and a map line) and updating the Dockerfile keep-list.
+  `letter-preamble.tex` documents why the class base size must stay 10pt.
+- **Body copy is justified, with hyphenation off.** The right edge of every bullet
+  must be flush; a ragged right edge is a design regression, and hyphenated words
+  turn into garbage ATS keywords. Widen `\emergencystretch` before allowing
+  hyphenation.
 - **Page breaks are `\cvneedspace`'s job.** A section heading must never sit at the
   foot of a page, and an entry must never break between its title and its first
   bullet. Keep the fixed room in `\cvsectionroom` / `\cventryroom` ahead of the

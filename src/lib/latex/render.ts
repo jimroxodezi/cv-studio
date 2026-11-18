@@ -67,20 +67,27 @@ function dateRange(start: string, end: string, current: boolean): string {
   return [start, final].filter(Boolean).join(" -- ");
 }
 
+/** "https://example.com/" -> "example.com", so the label carries the meaning. */
+function prettyUrl(value: string): string {
+  return value.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+}
+
 function header(identity: Identity, headline: string): string {
-  const contact: string[] = [];
-  if (identity.email) contact.push(link(`mailto:${identity.email}`, identity.email));
-  if (identity.phone) contact.push(escapeLatex(identity.phone));
-  if (identity.location) contact.push(escapeLatex(identity.location));
-  const links: string[] = [];
-  if (identity.website) links.push(link(identity.website, identity.website.replace(/^https?:\/\//, "").replace(/\/$/, "")));
-  if (identity.github) links.push(link(identity.github, identity.github.replace(/^https?:\/\//, "").replace(/\/$/, "")));
-  if (identity.linkedin) links.push(link(identity.linkedin, "linkedin"));
-  if (identity.x) links.push(link(identity.x, identity.x.replace(/^https?:\/\//, "").replace(/\/$/, "")));
+  // One labelled line under the name: "Email: …, Website: …, Phone: …".
+  // Labels make a recruiter's eye skip straight to the field it wants, and
+  // every field is optional, so the line matches whatever the memory holds.
+  const details: string[] = [];
+  const field = (label: string, value: string) => `\\cvfield{${label}}{${value}}`;
+  if (identity.email) details.push(field("Email", link(`mailto:${identity.email}`, identity.email)));
+  if (identity.website) details.push(field("Website", link(identity.website, prettyUrl(identity.website))));
+  if (identity.phone) details.push(field("Phone", escapeLatex(identity.phone)));
+  if (identity.location) details.push(field("Location", escapeLatex(identity.location)));
+  if (identity.linkedin) details.push(field("LinkedIn", link(identity.linkedin, prettyUrl(identity.linkedin))));
+  if (identity.github) details.push(field("GitHub", link(identity.github, prettyUrl(identity.github))));
+  if (identity.x) details.push(field("X", link(identity.x, prettyUrl(identity.x))));
 
   // Typography lives in the preamble; the renderer only supplies the parts.
-  const separator = " \\enspace\\textperiodcentered\\enspace ";
-  return `\\cvheader{${escapeLatex(identity.fullName)}}{${escapeLatex(headline.trim())}}{${contact.join(separator)}}{${links.join(separator)}}`;
+  return `\\cvheader{${escapeLatex(identity.fullName)}}{${escapeLatex(headline.trim())}}{${details.join(", ")}}{}`;
 }
 
 function section(title: string, body: string): string {

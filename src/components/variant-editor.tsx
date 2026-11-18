@@ -335,7 +335,7 @@ export function VariantEditor({
                 key={build.documentId}
                 title="CV preview"
                 src={`/api/documents/${build.documentId}`}
-                className="h-[720px] w-full bg-stone-100"
+                className="h-[60dvh] min-h-[360px] w-full bg-stone-100 xl:h-[calc(100vh-13rem)] xl:max-h-[720px] xl:min-h-[420px]"
               />
               {build.warnings.length ? (
                 <div className="border-t border-amber-200 bg-amber-50 p-3">

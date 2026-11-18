@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 const items = [
   { href: "/dashboard", label: "Dashboard", glyph: "◈" },
@@ -13,20 +14,31 @@ const items = [
 
 export function SidebarNav({ admin }: { admin?: boolean }) {
   const pathname = usePathname();
+  const nav = useRef<HTMLElement>(null);
   const all = admin ? [...items, { href: "/admin", label: "Admin", glyph: "⌘" }] : items;
 
+  // On a phone the nav is a horizontal scroller. Keep the active item in
+  // view when a route changes, so the highlighted tab is never half-clipped.
+  useEffect(() => {
+    const element = nav.current;
+    if (!element || element.scrollWidth <= element.clientWidth) return;
+    const active = element.querySelector<HTMLElement>('[data-active="true"]');
+    active?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [pathname]);
+
   return (
-    <nav className="flex gap-1 overflow-x-auto pb-1 md:flex-col md:overflow-visible md:pb-0">
+    <nav ref={nav} className="no-scrollbar flex gap-1 overflow-x-auto px-2 py-1 md:flex-col md:overflow-visible md:px-0">
       {all.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
           <Link
             key={item.href}
             href={item.href}
-            className={`flex shrink-0 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+            data-active={active ? "true" : undefined}
+            className={`flex shrink-0 items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               active
-                ? "bg-amber-500/15 text-amber-200"
-                : "text-stone-400 hover:bg-white/5 hover:text-stone-100"
+                ? "bg-[var(--panel-active)] text-[var(--panel-active-ink)]"
+                : "text-[var(--panel-muted)] hover:bg-white/5 hover:text-[var(--panel-ink)]"
             }`}
           >
             <span className="w-4 text-center text-xs opacity-70">{item.glyph}</span>

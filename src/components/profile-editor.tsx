@@ -206,7 +206,9 @@ export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData 
             type="button"
             onClick={() => setTab(item)}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-              tab === item ? "bg-stone-950 text-white" : "text-stone-600 hover:bg-stone-100"
+              tab === item
+                ? "bg-[var(--color-ink)] text-[var(--color-paper)]"
+                : "text-stone-600 hover:bg-stone-100"
             }`}
           >
             {item}
@@ -443,7 +445,7 @@ export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData 
                             onChange={(e) => updateEntry(section.id, entry.id, { link: e.target.value })}
                           />
                         </Field>
-                        <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_auto]">
                           <Field label="Start">
                             <input
                               className="input"
@@ -458,7 +460,7 @@ export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData 
                               onChange={(e) => updateEntry(section.id, entry.id, { end: e.target.value })}
                             />
                           </Field>
-                          <label className="flex items-end gap-2 pb-2 text-xs text-stone-600">
+                          <label className="col-span-2 flex items-center gap-2 pb-1 text-xs text-stone-600 sm:col-span-1 sm:items-end sm:pb-2">
                             <input
                               type="checkbox"
                               checked={entry.current}
@@ -636,7 +638,7 @@ export function ProfileEditor({ initialProfile }: { initialProfile: ProfileData 
       ) : null}
 
 
-      <div className="sticky bottom-4 mt-6 flex justify-end">
+      <div className="sticky bottom-0 z-20 mt-6 flex justify-end border-t border-[var(--border)] bg-[var(--color-paper)] py-3 md:border-0 md:bg-transparent md:py-0">
         <button type="button" onClick={save} className="btn-primary shadow-lg" disabled={busy}>
           {busy ? "Saving…" : "Save career memory"}
         </button>

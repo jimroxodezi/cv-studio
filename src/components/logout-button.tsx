@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function LogoutButton() {
+export function LogoutButton({ tone = "panel" }: { tone?: "panel" | "default" }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
@@ -14,8 +14,13 @@ export function LogoutButton() {
     router.refresh();
   }
 
+  const className =
+    tone === "panel"
+      ? "text-xs font-medium text-[var(--panel-muted)] transition hover:text-[var(--panel-ink)]"
+      : "text-sm font-medium text-[var(--color-stone-500)] transition hover:text-[var(--color-stone-900)]";
+
   return (
-    <button type="button" onClick={logout} disabled={busy} className="text-xs text-stone-400 hover:text-stone-100">
+    <button type="button" onClick={logout} disabled={busy} className={className}>
       {busy ? "Signing out…" : "Sign out"}
     </button>
   );

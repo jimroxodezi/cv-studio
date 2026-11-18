@@ -82,6 +82,14 @@ drizzle/                 migrations; the container applies them on start
   in `documents` with a distinct `kind`, a filter wherever documents are listed, and
   a decision on whether it stores an editable source for prompt edits (CVs use
   `meta.document`; cover letters use `meta.letter`).
+- **The UI theme is explicit, never system-driven.** It comes from the `cv-theme`
+  cookie read in the root layout; no cookie means light, and nothing reads
+  `prefers-color-scheme`. The toggle writes the cookie and flips the `.dark` class.
+  Dark styling is a set of token overrides in `globals.css`, so new components should
+  use the existing stone/white utilities rather than hardcoded colours.
+- **Check every page at 390px.** Below `md` the rail is replaced by the sticky header
+  and a horizontal nav; new pages must not introduce horizontal scroll, and iframes,
+  tables and action bars need a mobile size.
 - **Section and entry ids are user data.** When the memory changes shape, run
   `repointVariants` so variants never point at ids that no longer exist.
 

@@ -184,9 +184,14 @@ export function JobWorkspace({
           </div>
           <div className="mt-3">
             <Field label="Job link">
-              <div className="flex gap-2">
-                <input className="input" type="url" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
-                <button type="button" className="btn-secondary shrink-0" onClick={fetchLink} disabled={busy !== ""}>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  className="input min-w-0 sm:flex-1"
+                  type="url"
+                  value={sourceUrl}
+                  onChange={(e) => setSourceUrl(e.target.value)}
+                />
+                <button type="button" className="btn-secondary w-full shrink-0 sm:w-auto" onClick={fetchLink} disabled={busy !== ""}>
                   {busy === "fetch" ? "Fetching…" : "Fetch text"}
                 </button>
               </div>
@@ -383,7 +388,7 @@ export function JobWorkspace({
             ) : null}
           </div>
           {documentId ? (
-            <iframe key={documentId} title="Tailored CV preview" src={`/api/documents/${documentId}`} className="h-[760px] w-full bg-stone-100" />
+            <iframe key={documentId} title="Tailored CV preview" src={`/api/documents/${documentId}`} className="h-[60dvh] min-h-[360px] w-full bg-stone-100 xl:h-[calc(100vh-13rem)] xl:max-h-[760px] xl:min-h-[420px]" />
           ) : (
             <div className="flex h-72 flex-col items-center justify-center gap-2 p-6 text-center">
               <span className="text-3xl text-stone-300">✎</span>

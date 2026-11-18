@@ -85,14 +85,14 @@ export function CvEditPanel({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-stone-900/40 p-4"
+      className="fixed inset-0 z-50 overflow-y-auto bg-stone-900/40 p-2 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="cv-edit-title"
       onClick={requestClose}
     >
-      <div className="mx-auto my-6 w-full max-w-2xl" onClick={(event) => event.stopPropagation()}>
-        <Card className="p-5">
+      <div className="mx-auto my-3 w-full max-w-2xl sm:my-6" onClick={(event) => event.stopPropagation()}>
+        <Card className="p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 id="cv-edit-title" className="font-serif text-xl font-bold">

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { LoginForm } from "@/components/login-form";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +17,11 @@ export default async function LoginPage({
   const { error } = await searchParams;
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="hidden flex-col justify-between bg-stone-950 p-10 text-stone-300 lg:flex">
+    <div className="relative grid min-h-screen lg:grid-cols-2">
+      <div className="fixed right-4 top-4 z-20">
+        <ThemeToggle />
+      </div>
+      <div className="hidden flex-col justify-between border-r border-white/10 bg-stone-950 p-10 text-[var(--panel-muted)] lg:flex">
         <Link href="/" className="flex items-center gap-2">
           <span className="grid size-9 place-items-center rounded-lg bg-amber-500 font-serif text-lg font-bold text-stone-950">
             C
@@ -28,12 +32,12 @@ export default async function LoginPage({
           <blockquote className="max-w-md font-serif text-3xl leading-tight text-white">
             “The CV should be a selection from the truth, not a performance of it.”
           </blockquote>
-          <p className="mt-4 text-sm text-stone-500">One career memory. Every application.</p>
+          <p className="mt-4 text-sm text-[var(--panel-muted)]">One career memory. Every application.</p>
         </div>
-        <p className="text-xs text-stone-600">LaTeX typesetting · ATS-friendly · evidence-checked</p>
+        <p className="text-xs text-[var(--panel-muted)]">LaTeX typesetting · ATS-friendly · evidence-checked</p>
       </div>
 
-      <div className="flex items-center justify-center p-6">
+      <div className="flex items-center justify-center p-5 sm:p-6">
         <div className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
             <Link href="/" className="font-serif text-2xl font-bold">

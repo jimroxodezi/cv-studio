@@ -30,10 +30,12 @@ export function PageHeader({
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-stone-900 md:text-4xl">
+        <h1 className="font-serif text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl lg:text-4xl">
           {title}
         </h1>
-        {description ? <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-600">{description}</p> : null}
+        {description ? (
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-600">{description}</p>
+        ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </header>

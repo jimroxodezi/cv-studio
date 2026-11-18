@@ -8,8 +8,57 @@
   --color-accent: #b45309;
 }
 
+/*
+ * Theme tokens.
+ *
+ * The theme is explicit, never inferred from the operating system: <html>
+ * gets .dark from the toggle only, and the initial script in the root layout
+ * applies the stored choice before paint. Everything below has a light value
+ * and a dark override, so no component needs a dark: variant.
+ */
 :root {
   color-scheme: light;
+  --surface: #ffffff;
+  --surface-soft: #fafaf9;
+  --field: #ffffff;
+  --border: #e7e5e4;
+  --ring: #fef3c7;
+  --card-shadow: 0 1px 0 rgba(28, 25, 23, 0.04);
+  --panel: #0c0a09;
+  --panel-ink: #f5f5f4;
+  --panel-muted: #a8a29e;
+  --panel-active: rgba(245, 158, 11, 0.15);
+  --panel-active-ink: #fde68a;
+}
+
+.dark {
+  color-scheme: dark;
+  --surface: #1c1a18;
+  --surface-soft: #24211e;
+  --field: #171514;
+  --border: #3a3632;
+  --ring: #4a3a1a;
+  --card-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  --color-paper: #121110;
+  --color-ink: #f6f3ef;
+
+  /*
+   * Content palette. Tailwind encodes this scale in variables, so overriding
+   * it flips every text, border, divider and background utility at once.
+   * stone-950 is deliberately left alone: it is the fixed dark chrome used by
+   * the sidebar and the two marketing panels, in both themes.
+   */
+  --color-stone-50: #24211e;
+  --color-stone-100: #2b2724;
+  --color-stone-200: #3a3632;
+  --color-stone-300: #554f49;
+  --color-stone-400: #8b837c;
+  --color-stone-500: #b4aca4;
+  --color-stone-600: #cdc6bf;
+  --color-stone-700: #ded8d2;
+  --color-stone-800: #ece7e2;
+  --color-stone-900: #f6f3ef;
+  --color-sky-100: #1c3a4a;
 }
 
 html,
@@ -30,7 +79,10 @@ body {
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-stone-200/80 bg-white shadow-[0_1px_0_rgba(28,25,23,0.04)];
+    @apply rounded-2xl border;
+    background-color: var(--surface);
+    border-color: var(--border);
+    box-shadow: var(--card-shadow);
   }
 
   .btn {
@@ -42,7 +94,9 @@ body {
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 border border-stone-300 bg-white text-stone-800 hover:border-stone-400 hover:bg-stone-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 text-stone-800 hover:bg-stone-50;
+    background-color: var(--surface);
+    border-color: var(--border);
   }
 
   .btn-ghost {
@@ -50,7 +104,7 @@ body {
   }
 
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 border border-red-200 bg-red-50 text-red-700 hover:bg-red-100;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-sm font-semibold text-red-700 transition disabled:cursor-not-allowed disabled:opacity-50 hover:bg-red-100;
   }
 
   .btn-danger-solid {
@@ -58,7 +112,15 @@ body {
   }
 
   .input {
-    @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-amber-600 focus:ring-2 focus:ring-amber-100;
+    @apply w-full rounded-lg border px-3 py-2 text-sm outline-none transition placeholder:text-stone-400;
+    background-color: var(--field);
+    border-color: var(--border);
+    color: var(--color-ink);
+  }
+
+  .input:focus {
+    border-color: #b45309;
+    box-shadow: 0 0 0 3px var(--ring);
   }
 
   .label {
@@ -78,13 +140,143 @@ body {
   }
 }
 
+/* Horizontal nav rails: swipeable without a permanent scrollbar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 input[type="file"]::file-selector-button {
   margin-right: 0.75rem;
-  border: 1px solid #d6d3d1;
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
-  background: #fff;
+  background: var(--surface);
+  color: var(--color-ink);
   padding: 0.4rem 0.7rem;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* Marketing hero: the one place with a painted background rather than a
+   surface token. */
+.landing-bg {
+  background:
+    radial-gradient(circle at 20% 0%, #fef3c7 0%, transparent 38%),
+    linear-gradient(180deg, #f8f3e9 0%, #f3ede2 100%);
+}
+
+.dark .landing-bg {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(180, 83, 9, 0.28) 0%, transparent 42%),
+    linear-gradient(180deg, #15130f 0%, #0f0e0c 100%);
+}
+
+/* Utility overrides that cannot follow the scale: tokens shared by text and
+// background roles, and translucent variants with baked-in colours. */
+.dark .bg-white {
+  background-color: var(--surface);
+}
+
+.dark .bg-white\/70 {
+  background-color: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.dark .bg-stone-900\/40 {
+  background-color: rgba(0, 0, 0, 0.55);
+}
+
+.dark .text-amber-700 {
+  color: #f59e0b;
+}
+
+.dark .text-amber-800 {
+  color: #fbbf24;
+}
+
+.dark .text-amber-900 {
+  color: #fcd34d;
+}
+
+.dark .bg-amber-50,
+.dark .bg-amber-50\/60 {
+  background-color: #2b2114;
+}
+
+.dark .bg-amber-100 {
+  background-color: #3a2b16;
+}
+
+.dark .border-amber-200 {
+  border-color: #5c4520;
+}
+
+.dark .border-amber-300 {
+  border-color: #7a5a26;
+}
+
+.dark .text-red-600 {
+  color: #f87171;
+}
+
+.dark .text-red-700,
+.dark .text-red-800 {
+  color: #fca5a5;
+}
+
+.dark .text-red-900 {
+  color: #fecaca;
+}
+
+.dark .bg-red-50,
+.dark .bg-red-50\/40 {
+  background-color: #2b1517;
+}
+
+.dark .bg-red-100 {
+  background-color: #3a1b1d;
+}
+
+.dark .border-red-200 {
+  border-color: #5b2a2d;
+}
+
+.dark .text-emerald-700,
+.dark .text-emerald-800 {
+  color: #6ee7b7;
+}
+
+.dark .text-emerald-900 {
+  color: #a7f3d0;
+}
+
+.dark .bg-emerald-50 {
+  background-color: #10231d;
+}
+
+.dark .border-emerald-200 {
+  border-color: #245244;
+}
+
+.dark .text-sky-700 {
+  color: #7dd3fc;
+}
+
+.dark .text-sky-900,
+.dark .text-sky-950,
+.dark .text-sky-900\/80,
+.dark .text-sky-900\/70 {
+  color: #bae6fd;
+}
+
+.dark .bg-sky-50,
+.dark .bg-sky-50\/50 {
+  background-color: #122430;
+}
+
+.dark .border-sky-200 {
+  border-color: #244a5e;
 }

@@ -3,7 +3,7 @@
 @theme {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
-  --color-paper: #f6f1e7;
+  --color-paper: #faf7f2;
   --color-ink: #1c1917;
   --color-accent: #b45309;
 }
@@ -24,11 +24,15 @@
   --border: #e7e5e4;
   --ring: #fef3c7;
   --card-shadow: 0 1px 0 rgba(28, 25, 23, 0.04);
-  --panel: #0c0a09;
-  --panel-ink: #f5f5f4;
-  --panel-muted: #a8a29e;
-  --panel-active: rgba(245, 158, 11, 0.15);
-  --panel-active-ink: #fde68a;
+  /* The rail (sidebar) and the dark marketing panels follow the theme too:
+     light in light mode, dark in dark mode. Nothing stays permanently dark. */
+  --rail: #ffffff;
+  --rail-border: #e7e5e4;
+  --rail-ink: #1c1917;
+  --rail-muted: #78716c;
+  --rail-active: rgba(180, 83, 9, 0.12);
+  --rail-active-ink: #92400e;
+  --rail-hover: rgba(28, 25, 23, 0.05);
 }
 
 .dark {
@@ -41,12 +45,20 @@
   --card-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
   --color-paper: #121110;
   --color-ink: #f6f3ef;
+  --rail: #0c0a09;
+  --rail-border: rgba(255, 255, 255, 0.1);
+  --rail-ink: #f5f5f4;
+  --rail-muted: #a8a29e;
+  --rail-active: rgba(245, 158, 11, 0.15);
+  --rail-active-ink: #fde68a;
+  --rail-hover: rgba(255, 255, 255, 0.06);
 
   /*
    * Content palette. Tailwind encodes this scale in variables, so overriding
    * it flips every text, border, divider and background utility at once.
-   * stone-950 is deliberately left alone: it is the fixed dark chrome used by
-   * the sidebar and the two marketing panels, in both themes.
+   * stone-950 is left alone: the only places that still use it are the amber
+   * brand monogram and small always-dark accents, which read the same in both
+   * themes.
    */
   --color-stone-50: #24211e;
   --color-stone-100: #2b2724;
@@ -64,10 +76,10 @@
 html,
 body {
   min-height: 100%;
+  background: var(--color-paper);
 }
 
 body {
-  background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
 }

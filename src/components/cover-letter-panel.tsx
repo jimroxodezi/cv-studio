@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CoverLetter } from "@/lib/profile";
 import { Card, Field } from "@/components/ui";
+import { PdfPreview } from "@/components/pdf-preview";
 
 export type LetterVersion = {
   id: string;
@@ -265,11 +266,10 @@ export function CoverLetterPanel({
 
           {documentId ? (
             <div className="overflow-hidden rounded-xl border border-stone-200">
-              <iframe
+              <PdfPreview
                 key={`${documentId}-${rev}`}
-                title="Cover letter preview"
-                src={`/api/documents/${documentId}?v=${rev}`}
-                className="h-[560px] w-full bg-stone-100"
+                documentId={documentId}
+                className="min-h-[360px] w-full bg-stone-100"
               />
             </div>
           ) : null}

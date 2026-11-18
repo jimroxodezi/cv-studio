@@ -8,9 +8,10 @@
 % loading template/cv.tex; ../../ is the default for variants/* and jobs/*.
 \providecommand{\cvroot}{../../}
 
-% Side margins are wider than the top and bottom: a CV is read as a
-% column of text, and text that runs to the paper edge reads as dense.
-\usepackage[top=0.95cm,bottom=1cm,left=1.15cm,right=1.15cm]{geometry}
+% Margins are kept tight on all four sides: a CV is read as a column of text,
+% and every millimetre of text width is a line that does not wrap. The page
+% budget goes to content, not whitespace, so more history fits on fewer pages.
+\usepackage[top=0.7cm,bottom=0.8cm,left=0.9cm,right=0.9cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
@@ -115,33 +116,10 @@
 \widowpenalty=10000
 \displaywidowpenalty=10000
 
-% Page number on the second and later pages only. A one-page CV needs
-% none; a two-page CV should not leave the reader wondering whether a
-% page went missing. The total comes from the previous LaTeX pass (the
-% compiler always runs twice), so this costs no extra package.
-\makeatletter
-\def\cv@lastpage{?}
-\def\cv@name{}
-\AtEndDocument{%
-  \immediate\write\@auxout{\string\gdef\string\cv@lastpage{\the\value{page}}}%
-}
-% A two-page CV gets a quiet identity line in the footer: the reader who
-% prints page 2 alone can still tell whose CV it is. One-page CVs stay clean.
-\def\ps@cvpages{%
-  \let\@mkboth\@gobbletwo
-  \def\@oddhead{}\def\@evenhead{}%
-  \def\@oddfoot{%
-    \ifnum\value{page}>1
-      {\footnotesize\sffamily\color{cvmuted}%
-       \ifx\cv@name\@empty\else\cv@name\enspace\textperiodcentered\enspace\fi
-       Curriculum Vitae}%
-      \hfill{\footnotesize\sffamily\color{cvmuted}Page \the\value{page} of \cv@lastpage}%
-    \fi}%
-  \let\@evenfoot\@oddfoot
-}
-\pagestyle{cvpages}
-\setlength{\footskip}{12pt}
-\makeatother
+% No footer, no page numbers. A CV is usually read as a single screen or
+% printed whole, so an identity line and "Page X of Y" only spend vertical
+% room that belongs to content. The page ends where the text ends.
+\pagestyle{empty}
 
 %---------------------------- sections ----------------------------
 % Section headings: semibold, tracked open, and marked with a short accent
@@ -256,7 +234,6 @@
 % the accent, and a single accent rule closes the block.
 \makeatletter
 \newcommand{\cvheader}[4]{%
-  \gdef\cv@name{#1}%
   \begin{center}%
     {\fontsize{19.5}{23}\selectfont\sffamily\fontseries{sb}\selectfont\lsstyle\color{cvink}#1}%
     \if\relax\detokenize{#2}\relax\else\\[2.5pt]{\fontsize{10.8}{13.6}\selectfont\sffamily\color{cvaccent}#2}\fi%

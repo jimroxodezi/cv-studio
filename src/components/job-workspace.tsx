@@ -6,6 +6,7 @@ import type { JobAnalysis, TailorResult } from "@/lib/profile";
 import { Badge, Card, Field } from "@/components/ui";
 import { CoverLetterPanel, type LetterVersion } from "@/components/cover-letter-panel";
 import { CvEditPanel } from "@/components/cv-edit-panel";
+import { PdfPreview } from "@/components/pdf-preview";
 
 type JobData = {
   id: string;
@@ -388,7 +389,7 @@ export function JobWorkspace({
             ) : null}
           </div>
           {documentId ? (
-            <iframe key={documentId} title="Tailored CV preview" src={`/api/documents/${documentId}`} className="h-[60dvh] min-h-[360px] w-full bg-stone-100 xl:h-[calc(100vh-13rem)] xl:max-h-[760px] xl:min-h-[420px]" />
+            <PdfPreview key={documentId} documentId={documentId} className="min-h-[360px] w-full bg-stone-100 xl:h-[calc(100vh-13rem)] xl:max-h-[760px] xl:min-h-[420px]" />
           ) : (
             <div className="flex h-72 flex-col items-center justify-center gap-2 p-6 text-center">
               <span className="text-3xl text-stone-300">✎</span>

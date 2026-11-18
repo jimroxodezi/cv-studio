@@ -21,20 +21,20 @@ export default async function LoginPage({
       <div className="fixed right-4 top-4 z-20">
         <ThemeToggle />
       </div>
-      <div className="hidden flex-col justify-between border-r border-white/10 bg-stone-950 p-10 text-[var(--panel-muted)] lg:flex">
+      <div className="hidden flex-col justify-between border-r border-[var(--rail-border)] bg-[var(--rail)] p-10 text-[var(--rail-muted)] lg:flex">
         <Link href="/" className="flex items-center gap-2">
           <span className="grid size-9 place-items-center rounded-lg bg-amber-500 font-serif text-lg font-bold text-stone-950">
             C
           </span>
-          <span className="font-serif text-xl font-bold text-white">CV Studio</span>
+          <span className="font-serif text-xl font-bold text-[var(--rail-ink)]">CV Studio</span>
         </Link>
         <div>
-          <blockquote className="max-w-md font-serif text-3xl leading-tight text-white">
+          <blockquote className="max-w-md font-serif text-3xl leading-tight text-[var(--rail-ink)]">
             “The CV should be a selection from the truth, not a performance of it.”
           </blockquote>
-          <p className="mt-4 text-sm text-[var(--panel-muted)]">One career memory. Every application.</p>
+          <p className="mt-4 text-sm text-[var(--rail-muted)]">One career memory. Every application.</p>
         </div>
-        <p className="text-xs text-[var(--panel-muted)]">LaTeX typesetting · ATS-friendly · evidence-checked</p>
+        <p className="text-xs text-[var(--rail-muted)]">LaTeX typesetting · ATS-friendly · evidence-checked</p>
       </div>
 
       <div className="flex items-center justify-center p-5 sm:p-6">

@@ -16,7 +16,7 @@ export function LogoutButton({ tone = "panel" }: { tone?: "panel" | "default" })
 
   const className =
     tone === "panel"
-      ? "text-xs font-medium text-[var(--panel-muted)] transition hover:text-[var(--panel-ink)]"
+      ? "text-xs font-medium text-[var(--rail-muted)] transition hover:text-[var(--rail-ink)]"
       : "text-sm font-medium text-[var(--color-stone-500)] transition hover:text-[var(--color-stone-900)]";
 
   return (

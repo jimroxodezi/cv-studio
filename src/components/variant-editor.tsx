@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ProfileData, ProfileSection, VariantData } from "@/lib/profile";
 import { Badge, Card, Field } from "@/components/ui";
 import { CvEditPanel } from "@/components/cv-edit-panel";
+import { PdfPreview } from "@/components/pdf-preview";
 
 type BuildResult = {
   documentId: string;
@@ -331,11 +332,10 @@ export function VariantEditor({
           </div>
           {build ? (
             <>
-              <iframe
+              <PdfPreview
                 key={build.documentId}
-                title="CV preview"
-                src={`/api/documents/${build.documentId}`}
-                className="h-[60dvh] min-h-[360px] w-full bg-stone-100 xl:h-[calc(100vh-13rem)] xl:max-h-[720px] xl:min-h-[420px]"
+                documentId={build.documentId}
+                className="min-h-[360px] w-full bg-stone-100 xl:h-[calc(100vh-13rem)] xl:max-h-[720px] xl:min-h-[420px]"
               />
               {build.warnings.length ? (
                 <div className="border-t border-amber-200 bg-amber-50 p-3">

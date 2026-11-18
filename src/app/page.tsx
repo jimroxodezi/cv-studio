@@ -115,24 +115,24 @@ export default async function HomePage() {
           ))}
         </section>
 
-        <section className="mt-14 grid gap-6 rounded-3xl bg-stone-950 p-6 text-[var(--panel-muted)] sm:p-8 md:mt-16 md:grid-cols-3 md:gap-4 md:p-10">
+        <section className="mt-14 grid gap-6 rounded-3xl bg-[var(--rail)] p-6 text-[var(--rail-muted)] sm:p-8 md:mt-16 md:grid-cols-3 md:gap-4 md:p-10">
           <div>
-            <h3 className="font-serif text-lg font-bold text-white">No invented facts</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--panel-muted)]">
+            <h3 className="font-serif text-lg font-bold text-[var(--rail-ink)]">No invented facts</h3>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--rail-muted)]">
               Every number and date is checked against your career memory. Anything that
               cannot be traced is flagged before you send it.
             </p>
           </div>
           <div>
-            <h3 className="font-serif text-lg font-bold text-white">Real LaTeX output</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--panel-muted)]">
-              You get the PDF and the <code className="text-amber-300">.tex</code> source. Single
+            <h3 className="font-serif text-lg font-bold text-[var(--rail-ink)]">Real LaTeX output</h3>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--rail-muted)]">
+              You get the PDF and the <code className="text-amber-700">.tex</code> source. Single
               column, no tables, no text boxes — so parsers read it in order.
             </p>
           </div>
           <div>
-            <h3 className="font-serif text-lg font-bold text-white">Gaps are the point</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--panel-muted)]">
+            <h3 className="font-serif text-lg font-bold text-[var(--rail-ink)]">Gaps are the point</h3>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--rail-muted)]">
               If a posting wants something you cannot prove, CV Studio says so instead of
               quietly filling it in. You decide what to do next.
             </p>

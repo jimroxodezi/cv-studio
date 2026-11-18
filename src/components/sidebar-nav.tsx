@@ -37,8 +37,8 @@ export function SidebarNav({ admin }: { admin?: boolean }) {
             data-active={active ? "true" : undefined}
             className={`flex shrink-0 items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
               active
-                ? "bg-[var(--panel-active)] text-[var(--panel-active-ink)]"
-                : "text-[var(--panel-muted)] hover:bg-white/5 hover:text-[var(--panel-ink)]"
+                ? "bg-[var(--rail-active)] text-[var(--rail-active-ink)]"
+                : "text-[var(--rail-muted)] hover:bg-[var(--rail-hover)] hover:text-[var(--rail-ink)]"
             }`}
           >
             <span className="w-4 text-center text-xs opacity-70">{item.glyph}</span>

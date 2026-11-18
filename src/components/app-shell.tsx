@@ -10,14 +10,14 @@ export function AppShell({ user, children }: { user: UserRow; children: ReactNod
     <div className="min-h-screen md:flex">
       {/* Desktop rail. Hidden on phones; the sticky header carries the same
           navigation there. */}
-      <aside className="hidden bg-[var(--panel)] md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:p-5">
+      <aside className="hidden bg-[var(--rail)] md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col md:border-r md:border-[var(--rail-border)] md:p-5">
         <Link href="/dashboard" className="flex items-center gap-2">
           <span className="grid size-8 place-items-center rounded-lg bg-amber-500 font-serif text-lg font-bold text-stone-950">
             C
           </span>
           <span>
-            <span className="block font-serif text-lg font-bold leading-none text-white">CV Studio</span>
-            <span className="mt-1 block text-[10px] uppercase tracking-[0.2em] text-[var(--panel-muted)]">
+            <span className="block font-serif text-lg font-bold leading-none text-[var(--rail-ink)]">CV Studio</span>
+            <span className="mt-1 block text-[10px] uppercase tracking-[0.2em] text-[var(--rail-muted)]">
               career memory
             </span>
           </span>
@@ -27,9 +27,9 @@ export function AppShell({ user, children }: { user: UserRow; children: ReactNod
           <SidebarNav admin={user.role === "admin"} />
         </div>
 
-        <div className="border-t border-white/10 pt-4">
-          <p className="truncate text-sm font-medium text-[var(--panel-ink)]">{user.name || "Your account"}</p>
-          <p className="truncate text-xs text-[var(--panel-muted)]">{user.email}</p>
+        <div className="border-t border-[var(--rail-border)] pt-4">
+          <p className="truncate text-sm font-medium text-[var(--rail-ink)]">{user.name || "Your account"}</p>
+          <p className="truncate text-xs text-[var(--rail-muted)]">{user.email}</p>
           <div className="mt-3">
             <LogoutButton />
           </div>

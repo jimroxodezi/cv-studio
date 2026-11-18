@@ -22,9 +22,14 @@ function applyTheme(theme: Theme) {
   const dark = theme === "dark";
   document.documentElement.classList.toggle("dark", dark);
   document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = dark ? "dark" : "light";
   document.cookie = `${COOKIE_NAME}=${theme}; path=/; max-age=31536000; samesite=lax`;
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", dark ? "#121110" : "#f6f1e7");
+  if (meta) meta.setAttribute("content", dark ? "#121110" : "#faf7f2");
+  // Keep the <meta name="color-scheme"> in step with the toggle, not just on the
+  // server render, so iOS does not auto-darken after switching to light.
+  const scheme = document.querySelector('meta[name="color-scheme"]');
+  if (scheme) scheme.setAttribute("content", dark ? "dark" : "light");
   for (const listener of listeners) listener();
 }
 
@@ -55,7 +60,7 @@ export function ThemeToggle({
       title={label}
       className={`inline-flex size-10 shrink-0 items-center justify-center rounded-full border transition md:size-9 ${
         tone === "panel"
-          ? "border-white/15 bg-white/5 text-[var(--panel-muted)] hover:bg-white/10 hover:text-[var(--panel-ink)]"
+          ? "border-[var(--rail-border)] bg-[var(--rail-hover)] text-[var(--rail-muted)] hover:text-[var(--rail-ink)]"
           : "border-[var(--border)] bg-[var(--surface)] text-[var(--color-stone-600)] shadow-sm hover:bg-[var(--surface-soft)] hover:text-[var(--color-stone-900)]"
       } ${className}`}
     >

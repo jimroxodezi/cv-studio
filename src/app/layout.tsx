@@ -11,7 +11,13 @@ export const metadata: Metadata = {
 
 export async function generateViewport(): Promise<Viewport> {
   const theme = (await cookies()).get("cv-theme")?.value === "dark" ? "dark" : "light";
-  return { themeColor: theme === "dark" ? "#121110" : "#f6f1e7" };
+  // The <meta name="color-scheme"> tag is what stops iOS Safari and Brave from
+  // "auto-darkening" a light page when the device is in dark mode. The CSS
+  // `color-scheme` property alone is not enough for iOS.
+  return {
+    themeColor: theme === "dark" ? "#121110" : "#faf7f2",
+    colorScheme: theme === "dark" ? "dark" : "light",
+  };
 }
 
 /**

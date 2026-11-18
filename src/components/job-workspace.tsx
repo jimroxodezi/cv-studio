@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { JobAnalysis, TailorResult } from "@/lib/profile";
 import { Badge, Card, Field } from "@/components/ui";
 import { CoverLetterPanel, type LetterVersion } from "@/components/cover-letter-panel";
+import { CvEditPanel } from "@/components/cv-edit-panel";
 
 type JobData = {
   id: string;
@@ -24,6 +25,7 @@ type VersionData = {
   pageCount: number;
   warnings: string[];
   createdAt: string;
+  edited?: boolean;
 };
 
 export function JobWorkspace({
@@ -55,6 +57,7 @@ export function JobWorkspace({
   const [documentId, setDocumentId] = useState(versions[0]?.id ?? "");
   const [pageCount, setPageCount] = useState(versions[0]?.pageCount ?? 0);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   async function save(): Promise<boolean> {
     setBusy("save");
@@ -230,130 +233,133 @@ export function JobWorkspace({
           {error ? <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
         </Card>
 
-        <Card className="p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="font-serif text-lg font-bold">Tailoring brief</h2>
-              <p className="hint">Choose the variant the model should start from.</p>
-            </div>
-            <select className="input max-w-xs" value={variantId} onChange={(e) => setVariantId(e.target.value)}>
-              {variants.map((variant) => (
-                <option key={variant.id} value={variant.id}>
-                  {variant.name} ({variant.track})
-                </option>
-              ))}
-            </select>
+      <Card className="p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-serif text-lg font-bold">Tailoring brief</h2>
+            <p className="hint">Choose the variant the model should start from.</p>
           </div>
-          {analysis ? (
-            <div className="mt-4 space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <Badge tone="amber">{analysis.track}</Badge>
-                {analysis.seniority ? <Badge>{analysis.seniority}</Badge> : null}
-                <Badge tone={gaps.length ? "red" : "green"}>{gaps.length} gaps</Badge>
-                <Badge tone="green">{coverage.length} matched</Badge>
-              </div>
-              {analysis.angle ? <p className="text-sm leading-relaxed text-stone-700">{analysis.angle}</p> : null}
-              {analysis.keywords.length ? (
-                <div>
-                  <p className="label">Keywords</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {analysis.keywords.slice(0, 24).map((keyword) => (
-                      <span key={keyword} className="pill border-stone-200 bg-stone-50 text-stone-600">
-                        {keyword}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
+          <select className="input max-w-xs" value={variantId} onChange={(e) => setVariantId(e.target.value)}>
+            {variants.map((variant) => (
+              <option key={variant.id} value={variant.id}>
+                {variant.name} ({variant.track})
+              </option>
+            ))}
+          </select>
+        </div>
+        {analysis ? (
+          <div className="mt-4 space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <Badge tone="amber">{analysis.track}</Badge>
+              {analysis.seniority ? <Badge>{analysis.seniority}</Badge> : null}
+              <Badge tone={gaps.length ? "red" : "green"}>{gaps.length} gaps</Badge>
+              <Badge tone="green">{coverage.length} matched</Badge>
             </div>
-          ) : (
-            <p className="mt-3 text-sm text-stone-500">No analysis yet. Tailor the CV to extract requirements and gaps.</p>
-          )}
-        </Card>
-
-        <CoverLetterPanel
-          jobId={job.id}
-          hasDescription={description.trim().length >= 40}
-          versions={letters}
-        />
-
-        {coverage.length ? (
-          <Card className="p-5">
-            <h2 className="font-serif text-lg font-bold">Requirement coverage</h2>
-            <p className="hint mb-3">Only claims your career memory can evidence are listed here.</p>
-            <ul className="divide-y divide-stone-100">
-              {coverage.map((item) => (
-                <li key={`${item.keyword}-${item.where}`} className="py-2.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold text-stone-900">{item.keyword}</span>
-                    {item.where ? <Badge tone="blue">{item.where}</Badge> : null}
-                  </div>
-                  <p className="mt-0.5 text-xs leading-relaxed text-stone-500">{item.evidence}</p>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        ) : null}
-
-        {gaps.length ? (
-          <Card className="border-amber-200 bg-amber-50/60 p-5">
-            <h2 className="font-serif text-lg font-bold text-amber-900">Gaps — do not fake these</h2>
-            <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-amber-900">
-              {gaps.map((gap) => (
-                <li key={gap}>{gap}</li>
-              ))}
-            </ul>
-          </Card>
-        ) : null}
-
-        {result?.notes ? (
-          <Card className="p-5">
-            <details>
-              <summary className="cursor-pointer font-serif text-lg font-bold">Model notes</summary>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-stone-600">{result.notes}</p>
-            </details>
-          </Card>
-        ) : null}
-
-        <Card className="p-5">
-          <h2 className="font-serif text-lg font-bold">Versions</h2>
-          <p className="hint mb-3">Every build is kept. Preview any version without losing the current one.</p>
-          {versions.length ? (
-            <ul className="divide-y divide-stone-100">
-              {versions.map((version) => (
-                <li key={version.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDocumentId(version.id);
-                      setPageCount(version.pageCount);
-                      setWarnings(version.warnings);
-                    }}
-                    className={`text-left text-sm ${documentId === version.id ? "font-bold text-stone-900" : "text-stone-600 hover:text-stone-900"}`}
-                  >
-                    {new Date(version.createdAt).toLocaleString()}
-                    <span className="ml-2 text-xs font-normal text-stone-400">
-                      {version.pageCount} page{version.pageCount === 1 ? "" : "s"}
+            {analysis.angle ? <p className="text-sm leading-relaxed text-stone-700">{analysis.angle}</p> : null}
+            {analysis.keywords.length ? (
+              <div>
+                <p className="label">Keywords</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {analysis.keywords.slice(0, 24).map((keyword) => (
+                    <span key={keyword} className="pill border-stone-200 bg-stone-50 text-stone-600">
+                      {keyword}
                     </span>
-                  </button>
-                  <div className="flex gap-1.5">
-                    <a className="btn-secondary px-2 py-1 text-xs" href={`/api/documents/${version.id}?format=pdf`} target="_blank" rel="noreferrer">
-                      PDF
-                    </a>
-                    <a className="btn-secondary px-2 py-1 text-xs" href={`/api/documents/${version.id}?format=tex`} target="_blank" rel="noreferrer">
-                      .tex
-                    </a>
-                    <a className="btn-secondary px-2 py-1 text-xs" href={`/api/documents/${version.id}?format=txt`} target="_blank" rel="noreferrer">
-                      ATS
-                    </a>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-stone-500">Nothing built yet.</p>
-          )}
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-stone-500">No analysis yet. Tailor the CV to extract requirements and gaps.</p>
+        )}
+      </Card>
+
+      <CoverLetterPanel
+        jobId={job.id}
+        hasDescription={description.trim().length >= 40}
+        versions={letters}
+      />
+
+      {coverage.length ? (
+        <Card className="p-5">
+          <h2 className="font-serif text-lg font-bold">Requirement coverage</h2>
+          <p className="hint mb-3">Only claims your career memory can evidence are listed here.</p>
+          <ul className="divide-y divide-stone-100">
+            {coverage.map((item) => (
+              <li key={`${item.keyword}-${item.where}`} className="py-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-stone-900">{item.keyword}</span>
+                  {item.where ? <Badge tone="blue">{item.where}</Badge> : null}
+                </div>
+                <p className="mt-0.5 text-xs leading-relaxed text-stone-500">{item.evidence}</p>
+              </li>
+            ))}
+          </ul>
         </Card>
+      ) : null}
+
+      {gaps.length ? (
+        <Card className="border-amber-200 bg-amber-50/60 p-5">
+          <h2 className="font-serif text-lg font-bold text-amber-900">Gaps — do not fake these</h2>
+          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-amber-900">
+            {gaps.map((gap) => (
+              <li key={gap}>{gap}</li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
+      {result?.notes ? (
+        <Card className="p-5">
+          <details>
+            <summary className="cursor-pointer font-serif text-lg font-bold">Model notes</summary>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-stone-600">{result.notes}</p>
+          </details>
+        </Card>
+      ) : null}
+
+      <Card className="p-5">
+        <h2 className="font-serif text-lg font-bold">Versions</h2>
+        <p className="hint mb-3">Every build is kept. Preview any version without losing the current one.</p>
+        {versions.length ? (
+          <ul className="divide-y divide-stone-100">
+            {versions.map((version) => (
+              <li key={version.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDocumentId(version.id);
+                    setPageCount(version.pageCount);
+                    setWarnings(version.warnings);
+                  }}
+                  className={`text-left text-sm ${documentId === version.id ? "font-bold text-stone-900" : "text-stone-600 hover:text-stone-900"}`}
+                >
+                  {new Date(version.createdAt).toLocaleString()}
+                  <span className="ml-2 text-xs font-normal text-stone-400">
+                    {version.pageCount} page{version.pageCount === 1 ? "" : "s"}
+                  </span>
+                  {version.edited ? (
+                    <span className="ml-2 text-xs font-normal text-amber-700">edited</span>
+                  ) : null}
+                </button>
+                <div className="flex gap-1.5">
+                  <a className="btn-secondary px-2 py-1 text-xs" href={`/api/documents/${version.id}?format=pdf`} target="_blank" rel="noreferrer">
+                    PDF
+                  </a>
+                  <a className="btn-secondary px-2 py-1 text-xs" href={`/api/documents/${version.id}?format=tex`} target="_blank" rel="noreferrer">
+                    .tex
+                  </a>
+                  <a className="btn-secondary px-2 py-1 text-xs" href={`/api/documents/${version.id}?format=txt`} target="_blank" rel="noreferrer">
+                    ATS
+                  </a>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-stone-500">Nothing built yet.</p>
+        )}
+      </Card>
       </div>
 
       <div className="xl:sticky xl:top-6 xl:self-start">
@@ -366,9 +372,14 @@ export function JobWorkspace({
               </p>
             </div>
             {documentId ? (
-              <a className="btn-primary px-3 py-1.5 text-xs" href={`/api/documents/${documentId}?format=pdf&download=1`}>
-                Download
-              </a>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => setEditing(true)}>
+                  Edit with a prompt
+                </button>
+                <a className="btn-primary px-3 py-1.5 text-xs" href={`/api/documents/${documentId}?format=pdf&download=1`}>
+                  Download
+                </a>
+              </div>
             ) : null}
           </div>
           {documentId ? (
@@ -404,6 +415,20 @@ export function JobWorkspace({
           </div>
         ) : null}
       </div>
+
+      {documentId ? (
+        <CvEditPanel
+          open={editing}
+          documentId={documentId}
+          onClose={() => setEditing(false)}
+          onEdited={(outcome) => {
+            setDocumentId(outcome.documentId);
+            setPageCount(outcome.pageCount);
+            setWarnings(outcome.warnings);
+            router.refresh();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -50,6 +50,18 @@ function link(url: string, label: string): string {
   return href ? `\\href{${href}}{${escapeLatex(label)}}` : escapeLatex(label);
 }
 
+/**
+ * A recruiter reads "bechiq" or "alx_africa" as a typo, not as a brand. Only a
+ * name stored entirely in lowercase is touched, so deliberate mixed case such
+ * as "dbFailsim" or "eBay" survives the fix; the rest of the name is never
+ * rewritten.
+ */
+function capitaliseName(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed !== trimmed.toLocaleLowerCase()) return trimmed;
+  return trimmed.charAt(0).toLocaleUpperCase() + trimmed.slice(1);
+}
+
 function dateRange(start: string, end: string, current: boolean): string {
   const final = current ? "Present" : end;
   return [start, final].filter(Boolean).join(" -- ");
@@ -78,7 +90,7 @@ function section(title: string, body: string): string {
 function entryBody(entry: ProfileEntry): string {
   const dates = dateRange(entry.start, entry.end, entry.current);
   const subheading = [
-    escapeLatex(entry.subheading),
+    escapeLatex(capitaliseName(entry.subheading)),
     entry.link ? link(entry.link, entry.link.replace(/^https?:\/\//, "")) : "",
   ]
     .filter(Boolean)
@@ -90,7 +102,7 @@ function entryBody(entry: ProfileEntry): string {
   const bulletBlock = bullets ? `  \\begin{subitems}\n${bullets}\n  \\end{subitems}` : "";
 
   return [
-    `  \\cventry{${escapeLatex(entry.heading)}}{${subheading}}{${escapeLatex(entry.location)}}{${escapeLatex(dates)}}`,
+    `  \\cventry{${escapeLatex(capitaliseName(entry.heading))}}{${subheading}}{${escapeLatex(entry.location)}}{${escapeLatex(dates)}}`,
     bulletBlock,
   ]
     .filter(Boolean)

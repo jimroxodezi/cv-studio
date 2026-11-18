@@ -103,6 +103,8 @@ export async function POST(request: NextRequest, { params }: Params) {
           track: tailored.result.analysis.track,
           model: tailored.model,
           target: variant.options.pageTarget,
+          // The structured source is what prompt edits operate on.
+          document: doc,
         },
       })
       .returning({ id: documents.id });

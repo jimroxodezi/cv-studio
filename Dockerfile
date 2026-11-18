@@ -25,8 +25,9 @@ RUN rm -rf .next/standalone/node_modules/@img \
 # ---- tex toolchain ------------------------------------------------------
 # The pruned tree is copied into an empty image, so the Debian layer itself
 # (about 30 MB compressed) is not shipped. Only pdflatex and Latin Modern are
-# installed. The style files that Debian puts in texlive-latex-recommended/-extra
-# are vendored in latex/vendor, so those bundles never enter the image.
+# installed in the TeX tree. The CV typeface (Source Sans Pro) and the style
+# files that Debian puts in texlive-latex-recommended/-extra are vendored in
+# latex/vendor, so those bundles never enter the image.
 FROM debian:bookworm-slim AS tex
 
 # Brought in early so the strip below happens in this stage; the prune at the
@@ -147,6 +148,9 @@ ENV NODE_ENV=production \
     TEXMFHOME=/usr/local/share/texmf
 
 COPY latex/vendor/*.sty latex/vendor/*.cfg latex/vendor/*.def /usr/local/share/texmf/tex/latex/cv-studio/
+# Type1 font, metrics, encoding vectors and map for the CV body face. The
+# preamble loads the map by name; kpathsea finds it under TEXMFHOME.
+COPY latex/vendor/fonts/ /usr/local/share/texmf/fonts/
 
 WORKDIR /app
 

@@ -10,22 +10,77 @@
 
 % Side margins are wider than the top and bottom: a CV is read as a
 % column of text, and text that runs to the paper edge reads as dense.
-\usepackage[top=1.1cm,bottom=1.1cm,left=1.5cm,right=1.5cm]{geometry}
+\usepackage[top=1.05cm,bottom=1cm,left=1.5cm,right=1.5cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
-\usepackage{microtype}
+\usepackage[letterspace=30]{microtype}
 \usepackage{enumitem}
 \usepackage{titlesec}
 \usepackage{ragged2e}
 \usepackage{color}
-\usepackage[hidelinks]{hyperref}
+\usepackage{hyperref}
 
-% Two neutrals keep the page calm: near-black for headings, a printed
-% grey for rules and secondary metadata. Body text stays pure black.
+%----------------------------- type -------------------------------
+% Source Sans Pro: a low-contrast humanist sans with tall x-height and
+% open counters, designed for small screen sizes. It stays legible at
+% 10pt, where a thin serif starts to break up on a laptop.
+%
+% The Type1 files and a map covering exactly the shapes below are vendored
+% under latex/vendor/fonts; the Dockerfile installs them into TEXMFHOME. The
+% map keeps the package name, so a full TeX Live (where the same map is
+% already registered) needs no special case, and the pruned image, which has
+% no updmap database, loads it by name here.
+\pdfmapfile{=SourceSansPro.map}
+\DeclareFontFamily{T1}{SSPro}{}
+\DeclareFontShape{T1}{SSPro}{m}{n}{<-> SourceSansPro-Regular-tlf-t1}{}
+\DeclareFontShape{T1}{SSPro}{b}{n}{<-> SourceSansPro-Bold-tlf-t1}{}
+\DeclareFontShape{T1}{SSPro}{sb}{n}{<-> SourceSansPro-Semibold-tlf-t1}{}
+\DeclareFontShape{T1}{SSPro}{m}{it}{<-> SourceSansPro-It-tlf-t1}{}
+\DeclareFontShape{T1}{SSPro}{b}{it}{<-> SourceSansPro-BoldIt-tlf-t1}{}
+\DeclareFontShape{T1}{SSPro}{sb}{it}{<-> SourceSansPro-SemiboldIt-tlf-t1}{}
+\DeclareFontShape{T1}{SSPro}{m}{sl}{<->ssub * SSPro/m/it}{}
+\DeclareFontShape{T1}{SSPro}{b}{sl}{<->ssub * SSPro/b/it}{}
+\DeclareFontShape{T1}{SSPro}{sb}{sl}{<->ssub * SSPro/sb/it}{}
+% TS1 covers the few typographic symbols (middle dot, bullet) the layout
+% uses; without it they fall back to a serif from another family.
+\DeclareFontFamily{TS1}{SSPro}{}
+\DeclareFontShape{TS1}{SSPro}{m}{n}{<-> SourceSansPro-Regular-tlf-ts1}{}
+\DeclareFontShape{TS1}{SSPro}{b}{n}{<-> SourceSansPro-Bold-tlf-ts1}{}
+\DeclareFontShape{TS1}{SSPro}{sb}{n}{<-> SourceSansPro-Semibold-tlf-ts1}{}
+\DeclareFontShape{TS1}{SSPro}{m}{it}{<-> SourceSansPro-It-tlf-ts1}{}
+\DeclareFontShape{TS1}{SSPro}{b}{it}{<-> SourceSansPro-BoldIt-tlf-ts1}{}
+\DeclareFontShape{TS1}{SSPro}{sb}{it}{<-> SourceSansPro-SemiboldIt-tlf-ts1}{}
+\renewcommand{\rmdefault}{SSPro}
+\renewcommand{\sfdefault}{SSPro}
+\renewcommand{\familydefault}{\rmdefault}
+
+% Body text: 10pt on 12pt, the density of the old layout in the new
+% typeface. Source Sans Pro has a taller x-height than the serif it
+% replaced, so 10pt already reads a step larger; the airier 13.4pt leading
+% pushed full two-page CVs onto a third page, which is not a better CV.
+\makeatletter
+\renewcommand{\normalsize}{\@setfontsize\normalsize{10}{12}}
+\renewcommand{\small}{\@setfontsize\small{8.8}{10.6}}
+\renewcommand{\footnotesize}{\@setfontsize\footnotesize{8.2}{9.9}}
+\makeatother
+
+% Section headings: semibold and a touch larger than body text, tracked
+% open by \lsstyle so the band reads as a label rather than a sentence.
+\newcommand{\cvsectionfont}{\fontsize{11}{12.3}\selectfont\fontseries{sb}\selectfont}
+
+% One restrained accent plus two neutrals. A CV is still a document, not a
+% poster: the deep blue marks hierarchy (headings, links, bullet markers)
+% while body text stays pure black so it survives greyscale printing and
+% ATS extraction unchanged.
 \definecolor{cvink}{gray}{0.10}
-\definecolor{cvrule}{gray}{0.60}
-\definecolor{cvmuted}{gray}{0.35}
+\definecolor{cvaccent}{RGB}{31,78,121}
+\definecolor{cvrule}{RGB}{203,212,222}
+\definecolor{cvmuted}{gray}{0.34}
+
+% Links carry the accent but no underline: the colour is enough of a
+% signal, and an underlined URL in a header reads as body copy.
+\hypersetup{colorlinks=true,urlcolor=cvaccent,linkcolor=cvaccent}
 
 % Machine-readable text layer: helps ATS parsers and copy-paste.
 \ifdefined\pdfgentounicode
@@ -34,7 +89,6 @@
 \fi
 
 \urlstyle{same}
-\pagestyle{empty}
 % Let the last page end where the content ends. With \flushbottom, TeX
 % stretches every bit of vertical glue to fill the page, which is what turns
 % a nearly-full CV into one with huge, uneven gaps between sections.
@@ -47,79 +101,167 @@
 % extract "Telecom-mu-ni-ca-tions" as garbage keywords.
 \hyphenpenalty=10000
 \exhyphenpenalty=10000
+% Never leave a single line of a paragraph on its own page. Combined with
+% the atomic bullets below, this means a page can only break between
+% bullets, never inside one.
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+
+% Page number on the second and later pages only. A one-page CV needs
+% none; a two-page CV should not leave the reader wondering whether a
+% page went missing. The total comes from the previous LaTeX pass (the
+% compiler always runs twice), so this costs no extra package.
+\makeatletter
+\def\cv@lastpage{?}
+\def\cv@name{}
+\AtEndDocument{%
+  \immediate\write\@auxout{\string\gdef\string\cv@lastpage{\the\value{page}}}%
+}
+% A two-page CV gets a quiet identity line in the footer: the reader who
+% prints page 2 alone can still tell whose CV it is. One-page CVs stay clean.
+\def\ps@cvpages{%
+  \let\@mkboth\@gobbletwo
+  \def\@oddhead{}\def\@evenhead{}%
+  \def\@oddfoot{%
+    \ifnum\value{page}>1
+      {\footnotesize\color{cvmuted}%
+       \ifx\cv@name\@empty\else\cv@name\enspace\textperiodcentered\enspace\fi
+       Curriculum Vitae}%
+      \hfill{\footnotesize\color{cvmuted}Page \the\value{page} of \cv@lastpage}%
+    \fi}%
+  \let\@evenfoot\@oddfoot
+}
+\pagestyle{cvpages}
+\setlength{\footskip}{12pt}
+\makeatother
 
 %---------------------------- sections ----------------------------
-% Sans headings against a serif body give the page a clear hierarchy:
-% a recruiter skimming sees the section bands first, then the prose.
+% Section headings: semibold, tracked open, and marked with a short accent
+% bar. The bar gives a skimming recruiter a fixed left edge to follow; the
+% hairline under the heading closes the band without adding visual weight.
 % Spacing is fixed (no plus/minus glue) so a sparse CV never opens gaps.
 % The gap after the rule is built here instead of in \titlespacing's "after"
 % slot. A trailing \penalty10000 immediately before the glue makes that glue
 % an illegal page breakpoint: a heading can then never sit alone at the foot
-% of a page, which \nopagebreak alone could not prevent (it lands after the
-% glue, too late for TeX's page builder).
-\titleformat{\section}[block]{\large\sffamily\bfseries\color{cvink}}{}{0pt}{}%
-  [\vspace{3pt}{\color{cvrule}\titlerule[0.5pt]}\vspace{5pt}\penalty10000]
-\titleformat{name=\section,numberless}[block]{\large\sffamily\bfseries\color{cvink}}{}{0pt}{}%
-  [\vspace{3pt}{\color{cvrule}\titlerule[0.5pt]}\vspace{5pt}\penalty10000]
-\titlespacing*{\section}{0pt}{11pt}{0pt}
-\titlespacing*{name=\section,numberless}{0pt}{11pt}{0pt}
+% of a page.
+\titleformat{\section}[block]%
+  {\cvsectionfont\color{cvaccent}\lsstyle}%
+  {\textcolor{cvaccent}{\rule[-0.16ex]{2.6pt}{1.02em}}}%
+  {0.6em}{}%
+  [\vspace{3.5pt}{\color{cvrule}\titlerule[0.5pt]}\vspace{6pt}\penalty10000]
+\titleformat{name=\section,numberless}[block]%
+  {\cvsectionfont\color{cvaccent}\lsstyle}%
+  {\textcolor{cvaccent}{\rule[-0.16ex]{2.6pt}{1.02em}}}%
+  {0.6em}{}%
+  [\vspace{3.5pt}{\color{cvrule}\titlerule[0.5pt]}\vspace{6pt}\penalty10000]
+\titlespacing*{\section}{0pt}{10.8pt}{0pt}
+\titlespacing*{name=\section,numberless}{0pt}{10.8pt}{0pt}
 
 %----------------------------- lists ------------------------------
-% Body bullets: a small raised dot, not the full-size class bullet.
-\setlist[itemize]{leftmargin=1.15em, labelsep=0.5em,
-                  label={\raisebox{0.2ex}{\scriptsize$\bullet$}},
-                  topsep=1pt, parsep=0pt, partopsep=0pt, itemsep=2pt}
+% Body bullets: a small dot, one step down from the text size. The words
+% carry the weight; the marker only marks where a line starts.
+\setlist[itemize]{leftmargin=1.25em, labelsep=0.55em,
+                  label={\raisebox{0.12ex}{\scriptsize\textcolor{cvaccent}{\textbullet}}},
+                  topsep=1.5pt, parsep=0pt, partopsep=0pt, itemsep=1.7pt}
 
 % Entry list: jobs, degrees and projects. No marker -- a bullet in front
 % of every job title is noise, and the bold title already anchors the eye.
+% Just under 6pt plus the tighter leading is enough to separate entries
+% without spending the page: a page saved is worth more than a millimetre.
 \newlist{entrylist}{itemize}{1}
 \setlist[entrylist]{label={}, leftmargin=0pt, labelsep=0pt,
                     topsep=0pt, parsep=0pt, partopsep=0pt, itemsep=6pt}
 
-% Achievement bullets nested under an entry. Tight leading, one line of
-% separation is enough because the parent spacing already sets the break.
-% \interlinepenalty keeps a bullet on one page: a two-line achievement
-% that breaks after its first line reads as a mistake in print.
+% Achievement bullets nested under an entry. \interlinepenalty keeps a
+% bullet whole: a two-line achievement that breaks after its first line
+% reads as a mistake in print, and it leaves page breaks only between
+% bullets where they belong.
 \newlist{subitems}{itemize}{1}
-\setlist[subitems]{label={\raisebox{0.2ex}{\scriptsize$\bullet$}},
-                   leftmargin=1.15em, labelsep=0.5em,
-                   topsep=1pt, parsep=0pt, partopsep=0pt, itemsep=1pt,
+\setlist[subitems]{label={\raisebox{0.12ex}{\scriptsize\textcolor{cvaccent}{\textbullet}}},
+                   leftmargin=1.25em, labelsep=0.55em,
+                   topsep=1.4pt, parsep=0pt, partopsep=0pt, itemsep=1.1pt,
                    before={\interlinepenalty=10000}}
 
 %============================ macros ==============================
 % Include a fragment from content/.  Usage: \content{experience/minas}
 \newcommand{\content}[1]{\input{\cvroot content/#1.tex}}
 
-% Section heading with fixed, honest spacing. Content flows top to bottom and
-% spills onto a second page when it needs to; sections are never pushed apart to
-% fill leftover space. Use \cvsection instead of \section* everywhere in body.tex.
+%----------------------- page-break control -----------------------
+% \cvneedspace{<height>} starts a new page unless <height> of room is
+% left on the current one. It is the only page-break mechanism here, and
+% it is deliberately blunt: TeX's page builder cannot see a heading's
+% relationship to the block under it, so we assert that relationship
+% before the heading is placed.
 %
-% A negative penalty makes the space before the heading a preferred breakpoint, so a
-% heading that would land alone at the foot of a page moves to the next one. It adds
-% no glue, so it cannot create a gap.
-\newcommand{\cvsection}[1]{\par\penalty-100 \section*{#1}\nopagebreak[3]}
+% The penalty is -10000, so the page builder must break exactly here.
+% Nothing is discarded: only the vertical list is cut. The guard on
+% \pagetotal stops a block taller than a page from looping forever.
+\makeatletter
+\newdimen\cv@need
+\newdimen\cv@left
+\newcommand{\cvneedspace}[1]{%
+  \par
+  \ifdim\pagegoal<\maxdimen
+    \cv@need=#1\relax
+    \cv@left=\pagegoal
+    \advance\cv@left by -\pagetotal
+    \ifdim\cv@left<\cv@need
+      \ifdim\pagetotal>3\baselineskip
+        \penalty-10000
+      \fi
+    \fi
+  \fi
+}
+\makeatother
+
+% Room a section heading needs before its first real line: the heading,
+% its rule, the entry's two-line title block and two two-line bullets.
+% Plain macros, not lengths: \baselineskip here is the body leading inside
+% the document, so the room stays honest if the body size is ever changed.
+\newcommand{\cvsectionroom}{9.2\baselineskip}
+% Room an entry title needs before it leaves the bottom of a page: the
+% title block plus its first two bullets. One bullet is not enough -- a
+% page that opens with a single orphaned bullet looks like a typesetting
+% accident, and the extra room rarely costs a page.
+\newcommand{\cventryroom}{6.5\baselineskip}
+
+% Section heading. A break is only allowed before the heading (never
+% after it), and only after \cvneedspace has confirmed that the heading
+% plus the beginning of its content fits.
+\newcommand{\cvsection}[1]{%
+  \cvneedspace{\cvsectionroom}%
+  \par\penalty-50
+  \section*{#1}%
+  \nopagebreak[3]%
+}
 
 % Page header, built by the renderer:
 %   \cvheader{Name}{Headline or empty}{Contact line or empty}{Links line or empty}
-% Name, contact and links are centred; a hairline rule closes the block and
-% separates it from the first section without spending a whole section's gap.
+% Name, contact and links are centred. The name is the one element the eye
+% should land on first, so it is larger and tracked; the headline carries
+% the accent, and a single accent rule closes the block.
+\makeatletter
 \newcommand{\cvheader}[4]{%
+  \gdef\cv@name{#1}%
   \begin{center}%
-    {\LARGE\bfseries #1}%
-    \if\relax\detokenize{#2}\relax\else\\[2pt]{\large #2}\fi%
-    \if\relax\detokenize{#3}\relax\else\\[6pt]{\small #3}\fi%
-    \if\relax\detokenize{#4}\relax\else\\[1pt]{\small #4}\fi%
+    {\fontsize{19.5}{23}\selectfont\fontseries{sb}\selectfont\lsstyle\color{cvink}#1}%
+    \if\relax\detokenize{#2}\relax\else\\[2.5pt]{\fontsize{10.8}{13.6}\selectfont\color{cvaccent}#2}\fi%
+    \if\relax\detokenize{#3}\relax\else\\[4pt]{\small\color{cvmuted}#3}\fi%
+    \if\relax\detokenize{#4}\relax\else\\[0.5pt]{\small\color{cvmuted}#4}\fi%
   \end{center}%
-  \vspace{-3pt}%
-  \noindent{\color{cvrule}\rule{\linewidth}{0.5pt}}%
-  \par\vspace{1pt}%
+  \vspace{2pt}%
+  \noindent{\color{cvaccent}\rule{\linewidth}{1pt}}%
+  \par\vspace{2pt}%
 }
+\makeatother
 
 % One job entry.  Usage inside \begin{itemize}:
 %   \begin{cvjob}{Company}{Location}{Role title}{Dates} ... \end{cvjob}
 \newenvironment{cvjob}[4]{%
-  \item \textbf{#1} \hfill #2 \\
-        \textit{#3} \hfill #4%
+  \cvneedspace{\cventryroom}%
+  \item \textbf{#1} \hfill {\small\textcolor{cvmuted}{#4}} \\
+        \textit{#3} \hfill {\small\textcolor{cvmuted}{#2}}%
   \begin{subitems}%
 }{%
   \end{subitems}%
@@ -133,6 +275,7 @@
 % \begin{subitems} ... \end{subitems} only when there are bullets; an empty
 % nested list is a LaTeX error.
 \newcommand{\cventry}[4]{%
+  \cvneedspace{\cventryroom}%
   \item {\bfseries\color{cvink}#1}\hfill{\small\textcolor{cvmuted}{#4}}%
   \if\relax\detokenize{#2#3}\relax\else
     \\[1pt]\textit{#2}\hfill{\small\textcolor{cvmuted}{#3}}%
@@ -142,7 +285,8 @@
 % One project entry.  Usage inside \begin{itemize}:
 %   \begin{cvproject}{Name}{Stack, comma, separated} ... \end{cvproject}
 \newenvironment{cvproject}[2]{%
-  \item \textbf{#1} \quad {\small #2}%
+  \cvneedspace{\cventryroom}%
+  \item \textbf{#1} \quad {\small\color{cvmuted}#2}%
   \begin{subitems}%
 }{%
   \end{subitems}%
@@ -153,15 +297,19 @@
 % requiring a surrounding environment (content/skills/*.tex call it directly).
 %   \cvskill{Languages}{C++, C, Python}
 \newlength{\cvskilllabel}
-\setlength{\cvskilllabel}{8em}
+\setlength{\cvskilllabel}{12em}
 \newcommand{\cvskill}[2]{%
   \par\noindent
-  \begin{tabular}{@{}p{\cvskilllabel}@{\hspace{0.7em}}p{\dimexpr\linewidth-\cvskilllabel-0.7em\relax}@{}}%
-    \leavevmode\RaggedRight\bfseries\color{cvink}#1: &
+  \begin{tabular}{@{}p{\cvskilllabel}@{\hspace{0.8em}}p{\dimexpr\linewidth-\cvskilllabel-0.8em\relax}@{}}%
+    \leavevmode\RaggedRight{\small\bfseries\color{cvaccent}#1:} &
     \leavevmode\RaggedRight #2%
   \end{tabular}%
   \par\vspace{2.5pt}%
 }
 
 % One education line: \cvedu{Degree}{Institution --- dates}
-\newcommand{\cvedu}[2]{\textbf{#1} \hfill #2\par\vspace{2pt}}
+% The institution and dates drop to their own line rather than being
+% squeezed against a long degree title, where they used to wrap badly.
+\newcommand{\cvedu}[2]{{\bfseries\color{cvink}#1}\par
+  {\small\textcolor{cvmuted}{#2}}\par\vspace{3pt}}
+

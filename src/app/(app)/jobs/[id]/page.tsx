@@ -78,6 +78,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           pageCount: version.pageCount,
           warnings: version.warnings,
           createdAt: version.createdAt.toISOString(),
+          edited: Boolean((version.meta as { edit?: unknown }).edit),
         }))}
         letters={letterRows.map((row) => ({
           id: row.id,

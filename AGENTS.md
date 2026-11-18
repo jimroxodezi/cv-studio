@@ -42,12 +42,13 @@ src/app/                 routes; (app)/ is the signed-in shell
 src/app/api/             profile, variants, jobs, documents, cover-letter
 src/lib/profile.ts       zod schema for the memory; normalizeProfileData migrates old JSON
 src/lib/cv-document.ts   variant + tailored result -> CvDocument
+src/lib/cv-edit.ts       CvDocument + model edit -> merged CvDocument (pins identity)
 src/lib/latex/render.ts  CV -> LaTeX body
 src/lib/latex/letter.ts  cover letter -> LaTeX body
 src/lib/latex/compile.ts pdflatex in a temp dir; preamble.tex or letter-preamble.tex
 src/lib/ai/              provider client, prompts, import, tailor, cover letter
 src/lib/snapshots.ts     snapshot, prune, restore, repoint variants
-latex/vendor/            style files the pruned image needs at runtime
+latex/vendor/            style files and the CV typeface for the pruned image
 drizzle/                 migrations; the container applies them on start
 ```
 
@@ -58,11 +59,24 @@ drizzle/                 migrations; the container applies them on start
   or the CV grows huge gaps between sections.
 - **`latex/preamble.tex` is a copy of `../cv/template/preamble.tex`.** Change the
   workspace first, then copy here and rebuild.
-- **The production image ships Latin Modern only** and a pruned TeX tree. Do not
-  add packages without vendoring them in `latex/vendor` and updating the Dockerfile
-  keep-list. `letter-preamble.tex` documents why the class base size must stay 10pt.
+- **The production image ships Latin Modern plus the vendored Source Sans Pro** and a
+  pruned TeX tree. Do not add packages or fonts without vendoring them in
+  `latex/vendor` (for a Type1 face: `.tfm`, `.vf`, `.pfb`, `.enc`, and a map line) and
+  updating the Dockerfile keep-list. `letter-preamble.tex` documents why the class
+  base size must stay 10pt.
+- **Page breaks are `\cvneedspace`'s job.** A section heading must never sit at the
+  foot of a page, and an entry must never break between its title and its first
+  bullet. Keep the fixed room in `\cvsectionroom` / `\cventryroom` ahead of the
+  heading, and never put `\newpage` in generated content.
+- **A generated CV is edited by prompt, never by editing LaTeX by hand.** Each build
+  stores its structured source in `documents.meta.document`. An edit runs through
+  `applyCvEdit`, which pins every entry's heading, employer, location and dates from
+  that source, refuses ids and skill items the memory does not contain, re-runs the
+  number checks, and saves a new version. Never let an edit add a fact.
 - **Every new document kind** needs: a preamble (or reuse one), a renderer, storage
-  in `documents` with a distinct `kind`, and a filter wherever documents are listed.
+  in `documents` with a distinct `kind`, a filter wherever documents are listed, and
+  a decision on whether it stores an editable source for prompt edits (CVs use
+  `meta.document`; cover letters use `meta.letter`).
 - **Section and entry ids are user data.** When the memory changes shape, run
   `repointVariants` so variants never point at ids that no longer exist.
 

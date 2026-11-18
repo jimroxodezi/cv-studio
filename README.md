@@ -97,9 +97,11 @@ On Debian/Ubuntu:
 
 ```bash
 sudo apt-get install texlive-latex-base lmodern
-# The style files normally shipped in texlive-latex-recommended/-extra:
-mkdir -p ~/texmf/tex/latex/cv-studio
+# The style files and the CV typeface that normally live in
+# texlive-latex-recommended/-extra (a full TeX Live install already has them):
+mkdir -p ~/texmf/tex/latex/cv-studio ~/texmf/fonts
 cp latex/vendor/*.sty latex/vendor/*.cfg latex/vendor/*.def ~/texmf/tex/latex/cv-studio/
+cp -r latex/vendor/fonts/* ~/texmf/fonts/
 ```
 
 ## Configuration
@@ -139,6 +141,30 @@ the browser.
 5. You review the PDF, the coverage, and the gaps, and download the PDF or the
    `.tex` source.
 
+## How editing a generated CV works
+
+The delivered file is a PDF, but the thing being edited is not. Every build
+stores the structured `CvDocument` that produced it in `documents.meta.document`.
+
+1. "Edit with a prompt" sends one plain-text instruction to
+   `POST /api/documents/:id/edit`, together with the stored document and the
+   career memory.
+2. The model returns the same document in display order. Entry headings,
+   employers, locations and dates are pinned from the stored source; only bullets,
+   summaries, section titles and skill layout can change.
+3. Sections or rows left out of the response are removed; ids the memory does not
+   contain are discarded and reported. Skill items are checked against the memory
+   so a prompt cannot invent a tool. Number claims go through the same
+   truthfulness checks as a tailored CV.
+4. The result is recompiled and stored as a **new version**. Nothing is
+   overwritten, so the previous PDF stays in the versions list. If an edit would
+   change nothing, the existing version is returned with an explanation instead of
+   a duplicate.
+
+An edit is a rewrite of what the CV already says. If the instruction needs a fact
+the memory does not support, the CV stays as it is and the dialog says which fact
+was missing — add it to the career memory first.
+
 ## How cover letters work
 
 1. The same posting and career memory feed a separate writing brief. If the CV has
@@ -157,9 +183,9 @@ the browser.
    line by line and rebuilt without another model call. Recent letters on the same
    application are used to steer the next draft onto a different structure.
 
-Letters use `latex/letter-preamble.tex`, not the CV preamble. It deliberately keeps
-`\documentclass` at 10pt: the production image ships Latin Modern only, and an
-11pt base makes the class demand Computer Modern metrics that are not there.
+Letters use `latex/letter-preamble.tex`, not the CV preamble, and stay in Latin Modern.
+It deliberately keeps `\documentclass` at 10pt: an 11pt base makes the class demand
+Computer Modern metrics that the pruned image does not ship.
 
 ## Snapshots
 
@@ -196,8 +222,9 @@ fresh dump.
 - `variants` — selected entry IDs, summary, section order, page target
 - `jobs` — posting, analysis, result, notes, status
 - `documents` — versioned LaTeX source, PDF bytes, page count, ATS text, warnings.
-  `kind` is `variant`, `tailored`, or `cover_letter`; letters keep their editable
-  text in `meta.letter`.
+  `kind` is `variant`, `tailored`, or `cover_letter`; CVs keep their editable
+  structured source in `meta.document`, and letters their editable text in
+  `meta.letter`.
 - `usage_events` — daily limits for the shared server key
 
 ## Security notes

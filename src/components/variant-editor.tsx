@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProfileData, ProfileSection, VariantData } from "@/lib/profile";
 import { Badge, Card, Field } from "@/components/ui";
+import { CvEditPanel } from "@/components/cv-edit-panel";
 
 type BuildResult = {
   documentId: string;
@@ -38,6 +39,7 @@ export function VariantEditor({
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [build, setBuild] = useState<BuildResult | null>(null);
+  const [editing, setEditing] = useState(false);
 
   function patch(patchValue: Partial<VariantData>) {
     setData((current) => ({ ...current, ...patchValue }));
@@ -314,7 +316,10 @@ export function VariantEditor({
               )}
             </div>
             {build ? (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="btn-secondary px-2 py-1 text-xs" onClick={() => setEditing(true)}>
+                  Edit with a prompt
+                </button>
                 <a className="btn-secondary px-2 py-1 text-xs" href={`/api/documents/${build.documentId}?format=pdf&download=1`}>
                   PDF
                 </a>
@@ -362,6 +367,22 @@ export function VariantEditor({
           preview is the real PDF, not a mock-up.
         </p>
       </div>
+
+      {build ? (
+        <CvEditPanel
+          open={editing}
+          documentId={build.documentId}
+          onClose={() => setEditing(false)}
+          onEdited={(outcome) =>
+            setBuild({
+              documentId: outcome.documentId,
+              pageCount: outcome.pageCount,
+              warnings: outcome.warnings,
+              atsPreview: outcome.atsPreview ?? "",
+            })
+          }
+        />
+      ) : null}
     </div>
   );
 }

@@ -42,7 +42,9 @@ export async function POST(request: NextRequest, { params }: Params) {
         pageCount: compiled.pageCount,
         atsText: compiled.atsText,
         warnings,
-        meta: { track: variant.track, target: data.options.pageTarget },
+        // The structured source is what prompt edits operate on; without it,
+        // an edit would have to guess what the PDF was built from.
+        meta: { track: variant.track, target: data.options.pageTarget, document: doc },
       })
       .returning({ id: documents.id });
 
